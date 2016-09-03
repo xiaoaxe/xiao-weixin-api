@@ -23,6 +23,7 @@ import time
 import json
 import re
 import HTMLParser
+from traceback import format_exc
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -297,6 +298,12 @@ class WxApi:
                 return True
         return False
 
+    def is_public(self, uid):
+        for account in self.public_list:
+            if uid == account['UserName']:
+                return True
+        return False
+
     def is_special(self, uid):
         for account in self.special_list:
             if uid == account['UserName']:
@@ -461,6 +468,179 @@ class WxApi:
                 print('---> %s [Animation] %s' % (msg_prefix, msg_content['data']))
         elif mtype == 49:
             msg_content['type'] = 7
+            if msg['AppMsgType'] == 3:
+                app_msg_type = 'music'
+            if msg['AppMsgType'] == 5:
+                app_msg_type = 'link'
+            if msg['AppMsgType'] == 7:
+                app_msg_type = 'weibo'
+            else:
+                app_msg_type = 'unknown'
+
+            msg_content['data'] = {
+                'type': app_msg_type,
+                'desc': self.search_content('des', content, 'xml'),
+                'url': msg['Url'],
+                'from': self.search_content('appname', content, 'xml'),
+                'content': msg.get('Content')
+            }
+
+            if self.DEBUG:
+                print('---> %s [Share] %s' % (msg_prefix, app_msg_type))
+                print('---> %s' '*' * 50)
+                print('---> |title: %s' % msg['FileName'])
+                print('---> |desc: %s' % self.search_content('des', content, 'xml'))
+                print('---> |link: %s' % msg['Url'])
+                print('---> |from: %s' % self.search_content('des', content, 'xml'))
+                print('---> |content: %s' % (msg.get('content')[:20] if msg.get('content') else 'unknown'))
+                print('---> %s' '*' * 50)
+
+        elif mtype == 62:
+            msg_content['type'] = 8
+            msg_content['data'] = content
+            if self.DEBUG:
+                print('---> %s [Video] please check on mobiles' % msg_prefix)
+
+        elif mtype == 53:
+            msg_content['type'] = 9
+            msg_content['data'] = content
+            if self.DEBUG:
+                print('---> %s [Video Call]' % msg_prefix)
+
+        elif mtype == 10002:
+            msg_content['type'] = 10
+            msg_content['data'] = content
+            if self.DEBUG:
+                print('---> %s [Redraw]' % msg_prefix)
+
+        elif mtype == 10000:
+            msg_content['type'] = 12
+            msg_content['data'] = content
+            if self.DEBUG:
+                print('---> [Unknown]')
+
+        else:
+            msg_content['type'] = 99
+            msg_content['data'] = content
+            if self.DEBUG:
+                print('---> %s[Unknown]' % msg_prefix)
+
+        return msg_content
+
+    def handle_msg(self, r):
+        """
+        0: init
+        1 self
+        2: fileHelper
+        3: group
+        4: contact
+        5: public
+        6: special
+        99: unknown
+        """
+        for msg in r['AddMsgList']:
+            user = {'id': msg['FromUserName'], 'name': 'unknown'}
+            if msg['MsgType'] == 51:
+                msg_type_id = 0
+                user['name'] = 'system'
+            elif msg['MsgType'] == 37:
+                msg_type_id = 37
+                user['name'] = 'friend request'
+                content = msg['Content']
+                username = content[content.index('fromusername='): content.index('encryptusername')]
+                print(u'Friend Request')
+                print(u'NickName: ' + msg['RecommendInfo']['NickName'])
+                print(u'AppendInfo: ' + msg['RecommendInfo']['Content'])
+                print(u'Ticket: ' + msg['RecommendInfo']['Ticket'])
+                print(u'Wx Name: ' + username)
+            elif msg['FromUserName'] == self.my_account['UserName']:
+                msg_type_id = 1
+                user['name'] = 'self'
+            elif msg['ToUserName'] == 'filehelper':
+                msg_type_id = 1
+                user['name'] = 'file_helper'
+            elif msg['FromUserName'][:2] == '@@':
+                msg_type_id = 3
+                user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+            elif self.is_contact(msg['FromUserName']):
+                msg_type_id = 4
+                user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+            elif self.is_public(msg['FromUserName']):
+                msg_type_id = 5
+                user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+            elif self.is_special(msg['FromUserName']):
+                msg_type_id = 6
+                user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
+            else:
+                msg_type_id = 99
+                user['name'] = 'unknown'
+            user['name'] = HTMLParser.HTMLParser().unescape(user['name'])
+
+            if self.DEBUG and msg_type_id != 0:
+                print(u'---> [Msg] %s' % user['name'])
+            content = self.extract_msg_content(msg_type_id, msg)
+            message = {
+                'msg_type_id': msg_type_id,
+                'msg_id': msg['MsgId'],
+                'content': content,
+                'to_user_id': msg['ToUserName'],
+                'user': user
+            }
+            self.handle_msg_all(message)
+
+    def schedule(self):
+        """
+        任务处理函数，在处理消息的间隙被调用
+        """
+        pass
+
+    def proc_msg(self):
+        self.test_sync_check()
+        while True:
+            check_time = time.time()
+            try:
+                [retcode, selector] = self.sync_check()
+                print(u'---> sync_check: ', retcode, selector)
+                if retcode == '1101':  # 其他网页端登录了微信
+                    break
+                elif retcode == '0':
+                    if selector == '2':  # new msg
+                        r = self.sync()
+                        if r is not None:
+                            self.handle_msg(r)
+                    elif selector == 3:  # unknown
+                        r = self.sync()
+                        if r is not None:
+                            self.handle_msg(r)
+                    elif selector == 4:  # unknown
+                        r = self.sync()
+                        if r is not None:
+                            self.get_contact()
+                    elif selector == 6:  # maybe a red packets
+                        r = self.sync()
+                        if r is not None:
+                            self.handle_msg(r)
+                    elif selector == 7:  # operate on phone
+                        r = self.sync()
+                        if r is not None:
+                            self.handle_msg(r)
+                    elif selector == '0':
+                        pass
+                    else:
+                        print(u'---> sync_check: ', retcode, selector)
+                        r = self.sync()
+                        if r is not None:
+                            self.handle_msg(r)
+                else:
+                    print(u'---> sync_check: ', retcode, selector)
+                self.schedule()
+            except:
+                print('---> {ERROR] Except in proc_msg')
+                print(format_exc())
+
+            check_time = time.time() - check_time
+            if check_time > 0.8:
+                time.sleep(1 - check_time)
 
     @staticmethod
     def search_content(key, content, fmat='attr'):
@@ -489,6 +669,32 @@ class WxApi:
         with open(os.path.join(self.temp_pwd), 'wb') as f:
             f.write(data)
         return fn
+
+    def test_sync_check(self):
+        pass
+
+    def sync_check(self):
+        pass
+
+    def sync(self):
+        url = self.base_url + 'webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s' \
+                              % (self.sid, self.skey, self.pass_ticket)
+        params = {
+            'BaseRequest': self.base_request,
+            'SyncKey': self.sync_key,
+            'rr': ~int(time.time())
+        }
+
+        try:
+            r = self.session.post(url, data=json.dumps(params), timeout=60)
+            r.encoding = 'utf-8'
+            dic = json.loads(r.text)
+            if dic['BaseResponse']['Ret'] == 0:
+                self.sync_key = dic['SyncKey']
+                self.sync_key_str = '|'.join([keyVal['Key'] + '_' + keyVal['Val'] for keyVal in self.sync_key['List']])
+            return dic
+        except Exception as e:
+            return None
 
 
 def main():
