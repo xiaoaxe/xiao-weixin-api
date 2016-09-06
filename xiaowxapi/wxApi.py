@@ -24,6 +24,8 @@ import json
 import re
 import HTMLParser
 from traceback import format_exc
+from requests.exceptions import ConnectionError, ReadTimeout
+import mimetypes
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -641,6 +643,213 @@ class WxApi:
             check_time = time.time() - check_time
             if check_time > 0.8:
                 time.sleep(1 - check_time)
+
+    def apply_useradd_requests(self, RecommendInfo):
+        url = self.base_request + "/webwxverifyuser?r=" + str(int(time.time())) + '&lang=zh_CN'
+        params = {
+            'BaseRequest': self.base_request,
+            'Opcode': 3,
+            'VerifyUserListSize': 3,
+            'VerifyUserList': [{
+                'Value': RecommendInfo['UserName'],
+                'VerifyUserTicket': RecommendInfo['Ticket']
+            }],
+            'VerifyContent': '',
+            'SceneListCount': 1,
+            'SceneList': [33],
+            'skey': self.skey
+        }
+        headers = {'content-type': 'application/json; charset=UTF-8'}
+        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        try:
+            r = self.session.post(url, data=data, headers=headers)
+        except (ConnectionError, ReadTimeout):
+            return False
+        dic = r.json()
+        return dic['BaseResponse']['Ret'] == 0
+
+    def add_groupuser_to_friend_by_uid(self, uid, VerifyContent):
+        if self.is_contact(uid):
+            return True
+        url = self.base_url + 'webwxverifyuser?r=' + str(int(time.time())) + '&lang=zh_CN'
+        params = {
+            'BaseRequest': self.base_request,
+            'Opcode': 2,
+            'VerifyUserListSize': 1,
+            'VerifyUserList': [{
+                'Value': uid,
+                'VerifyUserTicket': ''
+            }],
+            'VerifyContent': VerifyContent,
+            'SceneListCount': 1,
+            'SceneList': [33],
+            'skey': self.skey
+        }
+        headers = {'content-type': 'application/json;charset=UTF-8'}
+        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        try:
+            r = self.session.post(url, headers=headers, data=data)
+        except (ConnectionError, ReadTimeout):
+            return False
+        dic = r.json()
+        return dic['BaseResponse']['Ret'] == 0
+
+    def add_friend_to_group(self, uid, group_name):
+        gid = ''
+        for group in self.group_list:
+            if group['NickName'] == group_name:
+                gid = group['UserName']
+        if gid == '':
+            return False
+        for user in self.group_members[gid]:
+            if user['UserName'] == uid:
+                return True
+
+        url = self.base_url + '/webwxupdatechatroom?fun=addmember&pass_ticket=%s' % self.pass_ticket
+        params = {
+            'AddMemberList': uid,
+            'ChatRoomName': gid,
+            'BaseRequest': self.base_request
+        }
+        headers = {'content-type': 'application/json;charset=UTF-8'}
+        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        try:
+            r = self.session.post(url, headers=headers, data=data)
+        except (ConnectionError, ReadTimeout):
+            return False
+        dic = r.json()
+        return dic['BaseResponse']['Ret'] == 0
+
+    def delete_user_from_group(self, uname, gid):
+        uid = ''
+        for user in self.group_members[gid]:
+            if user['NickName'] == uname:
+                uid = user['UserName']
+
+        if not uid:
+            return False
+        url = self.base_url + 'webwxupdatechatroom?fun=delmember&pass_ticket=%s' % self.pass_ticket
+        params = {
+            'DelMemberList': uid,
+            'ChatRoomName': gid,
+            'BaseRequest': self.base_request
+        }
+        headers = {'content-type': 'application/json;charset=UTF-8'}
+        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        try:
+            r = self.session.post(url, headers=headers, data=data)
+        except (ConnectionError, ReadTimeout):
+            return False
+        dic = r.json()
+        return dic['BaseResponse']['Ret'] == 0
+
+    def send_msg_by_uid(self, word, dst='filehelper'):
+        url = self.base_url + 'webwxsendmsg?pass_ticket=%s' % self.pass_ticket
+        msg_id = str(int(time.time() * 1000)) + str(random.random())[:5].replace('.', '')
+        word = self.to_unicode(word)
+        params = {
+            'BaseRequest': self.base_request,
+            'Msg': {
+                'Type': 1,
+                'Content': word,
+                'FromUserName': self.my_account['UserName'],
+                'ToUserName': dst,
+                'LocalID': msg_id,
+                'ClientMsgId': msg_id
+            }
+        }
+        headers = {'content-type': 'application/json;charset=UTF-8'}
+        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        try:
+            r = self.session.post(url, headers=headers, data=data)
+        except (ConnectionError, ReadTimeout):
+            return False
+        dic = r.json()
+        return dic['BaseResponse']['Ret'] == 0
+
+    def upload_media(self, fpath, is_img=False):
+        if not os.path.exists(fpath):
+            print('---> [ERROR] File not exists.')
+            return None
+        url_1 = 'http://file.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
+        url_2 = 'http://file2.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
+        flen = str(os.path.getsize(fpath))
+        ftype = mimetypes.guess(fpath)[0] or 'application/octet-stream'
+        files = {
+            'id': (None, 'WU_FILE_%s' % str(self.file_index)),
+            'name': (None, os.path.basename(fpath)),
+            'type': (None, ftype),
+            'lastModifyDate': (None, time.strftime('%m/%d/%Y, %H:%M:%S GTM+0800 (CST)')),
+            'size': (None, flen),
+            'mediatype': (None, 'pic' if is_img else 'doc'),
+            'uploadmediarequest': (None, json.dumps(
+                    {
+                        'BaseRequest': self.base_request,
+                        'ClientMediaId': int(time.time()),
+                        'TotalLen': flen,
+                        'StartPos': 0,
+                        'DataLen': flen,
+                        'MediaType': 4,
+                    }
+            )),
+            'webwx_data_ticket': (None, self.session.cookies['webwx_data_ticket']),
+            'pass_ticket': (None, self.pass_ticket),
+            'filename': (os.path.basename(fpath), open(fpath, 'rb'), ftype.split('/')[1]),
+        }
+        self.file_index += 1
+        try:
+            r = self.session.post(url_1, files=files)
+            if json.loads(r.text)['BaseResponse']['Ret'] != 0:
+                r = self.session.post(url_2, files=files)
+                if json.loads(r.text)['BaseResponse']['Ret'] != 0:
+                    print('---> [ERROR] upload media failsure.')
+                    return None
+                mid = json.loads(r.text)['MediaId']
+                return mid
+        except (ConnectionError, ReadTimeout):
+            return None
+
+    def send_file_msg_by_uid(self, fpath, uid):
+        mid = self.upload_media(fpath)
+        if mid is None or not mid:
+            return False
+        url = self.base_url + '/webwxsendappmsg?fun=async&pass_ticket=' + self.pass_ticket
+        msg_id = str(int(time.time() * 1000)) + str(random.random())[:5].replace('.', '')
+        data = {
+            'BaseRequest': self.base_request,
+            'Msg': {
+                'Type': 6,
+                'Content': (
+                    '<appmsg appid="wxeb7ec651dd0aefa9" sdkver=''><title>%s</title><des>'
+                    '</des><action></action><type>6</type><content></content><url></url>'
+                    '<lowurl></lowurl><appattach><totallen>%s</totallen><attachid>%s</attachid>'
+                    '<fileext>%s</fileext></appattach><extinfo></extinfo></appmsg>'
+                    % (os.path.basename(fpath).encode('utf-8'), str(os.path.getsize(fpath)), mid,
+                       fpath.split('.')[-1])).encode('utf-8'),
+                'FromUserName': self.my_account['UserName'],
+                'ToUserName': uid,
+                'LocalID': msg_id,
+                'ClientMsgId': msg_id,
+            }
+        }
+        try:
+            r = self.session.post(url, data=json.dumps(data))
+            res = json.loads(r.text)
+            if res['BaseResponse']['Ret'] == 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            return False
+
+    def send_img_msg_by_uid(self, fpath, uid):
+        mid = self.upload_media(fpath, is_img=True)
+        if mid is None:
+            return False
+        url = self.base_url + '/webwxsendmsgimg?fun=async&f=json'
+        data = {
+
+        }
 
     @staticmethod
     def search_content(key, content, fmat='attr'):
