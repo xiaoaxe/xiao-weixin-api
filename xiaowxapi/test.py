@@ -3,7 +3,7 @@
 
 
 """
-@version: ??
+@version: 1.0
 @author: BaoQiang
 @license: Apache Licence 
 @contact: mailbaoqiang@gmail.com

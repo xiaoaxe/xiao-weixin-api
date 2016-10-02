@@ -3,7 +3,7 @@
 
 
 """
-@version: ??
+@version: 1.0
 @author: BaoQiang
 @license: Apache Licence 
 @contact: mailbaoqiang@gmail.com
@@ -13,40 +13,29 @@
 @time: 2016/8/28 22:04
 """
 
-import os
-import sys
-import webbrowser
-import requests
-import traceback
-import random
-import time
+import html
 import json
-import re
-from html.parser import HTMLParser
-from traceback import format_exc
-from requests.exceptions import ConnectionError, ReadTimeout
 import mimetypes
-import pyqrcode
+import os
+import random
+import re
+import sys
+import time
+import traceback
 import xml.dom.minidom
+from traceback import format_exc
 from urllib import parse
+
+import requests
+import yattag
+from requests.exceptions import ConnectionError, ReadTimeout
+
+import codecs
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
 SCANED = '201'
 TIMEOUT = '408'
-
-
-def show_images(file_path):
-    if sys.version_info >= (3, 3):
-        from shlex import quote
-    else:
-        from pipes import quote
-
-    if sys.platform == 'darwin':
-        command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
-        os.system(command)
-    else:
-        webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
 
 
 class SafeSession(requests.Session):
@@ -67,7 +56,7 @@ class SafeSession(requests.Session):
                 json=None):
         for i in range(3):
             try:
-                return super(SafeSession, self).request(method.url, params, data, headers, cookies, files, auth,
+                return super(SafeSession, self).request(method, url, params, data, headers, cookies, files, auth,
                                                         timeout, allow_redirects, proxies, hooks, stream, verify, cert,
                                                         json)
             except Exception as e:
@@ -86,9 +75,9 @@ class WxApi:
         self.skey = ''
         self.pass_ticket = ''
         self.device_id = 'e' + repr(random.random())[2:17]
-        self.base_request = ''
+        self.base_request = {}
         self.sync_key_str = ''
-        self.sync_key = ''
+        self.sync_key = []
         self.sync_host = ''
 
         self.temp_pwd = os.path.join(os.getcwd(), "temp")
@@ -96,7 +85,11 @@ class WxApi:
             os.makedirs(self.temp_pwd)
 
         self.session = SafeSession()
-        self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5'})
+        # self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5'})
+        # self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36'})
+        # self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Linux; U; Android 4.1.2; zh-cn; GT-I9300 Build/JZO54K) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30 MicroMessenger/5.2.380'})
+        self.session.headers.update(
+                {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0'})
         self.conf = {'qr': 'png'}
 
         self.my_account = {}
@@ -116,10 +109,10 @@ class WxApi:
 
     @staticmethod
     def to_unicode(string, encoding='utf-8'):
-        if isinstance(string, str):
-            return str.encode(string, encoding)
-        elif isinstance(string, bytes):
-            return bytes.decode(string, encoding)
+        if isinstance(string, bytes):
+            return string.decode(encoding)
+        elif isinstance(string, str):
+            return string
         else:
             raise Exception('Unknown Type')
 
@@ -129,8 +122,8 @@ class WxApi:
         r = self.session.post(url, data='{}')
         r.encoding = 'utf-8'
         if self.DEBUG:
-            with open(os.path.join(self.temp_pwd, 'contacts.json'), 'w') as f:
-                f.write(r.text.encode('utf-8'))
+            with codecs.open(os.path.join(self.temp_pwd, 'contacts.json'), 'w', 'utf-8') as f:
+                f.write(r.text)
         dic = json.loads(r.text)
         self.member_list = dic['MemberList']
 
@@ -201,15 +194,15 @@ class WxApi:
         r.encoding = 'utf-8'
         dic = json.loads(r.text)
         group_members = {}
-        encry_chat_root_id = {}
+        encry_chat_room_id = {}
         for group in dic['ContactList']:
             gid = group['UserName']
             members = group['MemberList']
             group_members['gid'] = members
-            encry_chat_root_id[gid] = group['EncryChatRootId']
+            encry_chat_room_id[gid] = group['EncryChatRoomId']
 
         self.group_members = group_members
-        self.encry_chat_room_id_list = encry_chat_root_id
+        self.encry_chat_room_id_list = encry_chat_room_id
 
     def get_group_member_name(self, gid, uid):
         if gid not in self.group_members:
@@ -298,7 +291,7 @@ class WxApi:
         return 'unknown'
 
     def is_contact(self, uid):
-        for account in self.public_list:
+        for account in self.contact_list:
             if uid == account['UserName']:
                 return True
         return False
@@ -376,7 +369,7 @@ class WxApi:
          99: Unknown
         """
         mtype = msg['MsgType']
-        content = HTMLParser.HTMLParser().unescape(msg['Content'])
+        content = html.unescape(msg['Content'])
         msg_id = msg['MsgId']
 
         msg_content = {}
@@ -416,7 +409,7 @@ class WxApi:
                 msg_content['type'] = 0
                 if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # group text msg
                     msg_infos = self.proc_at_info(content)
-                    str_msg_all = msg_infos[content]
+                    str_msg_all = msg_infos[0]
                     str_msg = msg_infos[1]
                     detail = msg_infos[2]
                     msg_content['data'] = str_msg_all
@@ -545,7 +538,7 @@ class WxApi:
         """
         for msg in r['AddMsgList']:
             user = {'id': msg['FromUserName'], 'name': 'unknown'}
-            if msg['MsgType'] == 51:
+            if msg['MsgType'] == 51: #init msg
                 msg_type_id = 0
                 user['name'] = 'system'
             elif msg['MsgType'] == 37:
@@ -564,22 +557,22 @@ class WxApi:
             elif msg['ToUserName'] == 'filehelper':
                 msg_type_id = 1
                 user['name'] = 'file_helper'
-            elif msg['FromUserName'][:2] == '@@':
+            elif msg['FromUserName'][:2] == '@@': #group
                 msg_type_id = 3
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_contact(msg['FromUserName']):
+            elif self.is_contact(msg['FromUserName']): #contact
                 msg_type_id = 4
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_public(msg['FromUserName']):
+            elif self.is_public(msg['FromUserName']): #public
                 msg_type_id = 5
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_special(msg['FromUserName']):
+            elif self.is_special(msg['FromUserName']): #special
                 msg_type_id = 6
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
             else:
                 msg_type_id = 99
                 user['name'] = 'unknown'
-            user['name'] = HTMLParser.HTMLParser().unescape(user['name'])
+            user['name'] = html.unescape(user['name'])
 
             if self.DEBUG and msg_type_id != 0:
                 print(u'---> [Msg] %s' % user['name'])
@@ -600,12 +593,16 @@ class WxApi:
         pass
 
     def proc_msg(self):
-        self.test_sync_check()
+        if not self.test_sync_check():
+            print('sync check test failed !')
+
         while True:
             check_time = time.time()
+
             try:
                 [retcode, selector] = self.sync_check()
-                print(u'---> sync_check: ', retcode, selector)
+                if self.DEBUG:
+                    print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
                 if retcode == '1101':  # 其他网页端登录了微信
                     break
                 elif retcode == '0':
@@ -632,23 +629,26 @@ class WxApi:
                     elif selector == '0':
                         pass
                     else:
-                        print(u'---> sync_check: ', retcode, selector)
+                        if self.DEBUG:
+                            print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
                         r = self.sync()
                         if r is not None:
                             self.handle_msg(r)
                 else:
-                    print(u'---> sync_check: ', retcode, selector)
+                    if self.DEBUG:
+                        print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
+
                 self.schedule()
-            except:
+            except Exception as e:
                 print('---> {ERROR] Except in proc_msg')
                 print(format_exc())
 
             check_time = time.time() - check_time
-            if check_time > 0.8:
+            if check_time < 0.8:
                 time.sleep(1 - check_time)
 
     def apply_useradd_requests(self, RecommendInfo):
-        url = self.base_request + "/webwxverifyuser?r=" + str(int(time.time())) + '&lang=zh_CN'
+        url = self.base_url + "/webwxverifyuser?r=" + str(int(time.time())) + '&lang=zh_CN'
         params = {
             'BaseRequest': self.base_request,
             'Opcode': 3,
@@ -747,7 +747,7 @@ class WxApi:
         return dic['BaseResponse']['Ret'] == 0
 
     def send_msg_by_uid(self, word, dst='filehelper'):
-        url = self.base_url + 'webwxsendmsg?pass_ticket=%s' % self.pass_ticket
+        url = self.base_url + '/webwxsendmsg?pass_ticket=%s' % self.pass_ticket
         msg_id = str(int(time.time() * 1000)) + str(random.random())[:5].replace('.', '')
         word = self.to_unicode(word)
         params = {
@@ -762,7 +762,7 @@ class WxApi:
             }
         }
         headers = {'content-type': 'application/json;charset=UTF-8'}
-        data = json.dumps(params, ensure_ascii=False).encode('utf8')
+        data = json.dumps(params, ensure_ascii=False).encode('utf-8')
         try:
             r = self.session.post(url, headers=headers, data=data)
         except (ConnectionError, ReadTimeout):
@@ -777,7 +777,7 @@ class WxApi:
         url_1 = 'http://file.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
         url_2 = 'http://file2.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
         flen = str(os.path.getsize(fpath))
-        ftype = mimetypes.guess(fpath)[0] or 'application/octet-stream'
+        ftype = mimetypes.guess_type(fpath)[0] or 'application/octet-stream'
         files = {
             'id': (None, 'WU_FILE_%s' % str(self.file_index)),
             'name': (None, os.path.basename(fpath)),
@@ -899,7 +899,7 @@ class WxApi:
 
     def send_msg(self, name, word, isfile=False):
         uid = self.get_user_id(name)
-        if uid is not None:
+        if uid:
             if isfile:
                 with open(word, 'r') as f:
                     result = True
@@ -910,10 +910,18 @@ class WxApi:
                             pass
                         else:
                             result = False
+                        time.sleep(1)
+                    return result
+            else:
+                word = self.to_unicode(word)
+                if self.send_msg_by_uid(word,uid):
+                    return True
+                else:
+                    return False
         else:
             if self.DEBUG:
                 print('[ERROR] This user does not exist .')
-            return True
+            return False
 
     @staticmethod
     def search_content(key, content, fmat='attr'):
@@ -928,8 +936,14 @@ class WxApi:
             return 'unknown'
 
     def run(self):
-        self.get_uuid()
-        self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.png'))
+        if not self.get_uuid():
+            print('get qruuid err, exit')
+            sys.exit(-1)
+
+        if not self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.png')):
+            print('get qrcode err, exit')
+            sys.exit(-1)
+
         print('[INFO] Please use WeChat to scan the QR Code. ')
 
         result = self.wait4login()
@@ -937,36 +951,47 @@ class WxApi:
             print('[ERROR] Web WeChat login failed. failed code = %s' % (result))
 
         if self.login():
-            print('[INFO] Web WeChat login succeed .')
+            print('[INFO] Web WeChat login succeed.')
         else:
-            print('[ERROR] Web WeChat login failed .')
+            print('[ERROR] Web WeChat login failed.')
             return
 
         if self.init():
-            print('[INFO] Web WeChat init succeed .')
+            print('[INFO] Web WeChat init succeed.')
         else:
-            print('[ERROR] Web WeChat init failed .')
+            print('[ERROR] Web WeChat init failed.')
             return
 
-        self.status_notify()
+        if not self.status_notify():
+            print('[ERROR] run status notify err')
         self.get_contact()
 
         print('[INFO] Get %d contacts' % len(self.contact_list))
-        print('[INFO] Start to process messages.')
+        print('[INFO] Start to process messages...')
 
         self.proc_msg()
 
+    # def gen_qr_code(self, qr_file_path):
+    #     # string = 'http://login.weixin.qq.com/1/' + self.uuid
+    #     qr = pyqrcode.create(string)
+    #     if self.conf['qr'] == 'png':
+    #         qr.png(qr_file_path, scale=8)
+    #         show_images(qr_file_path)
+    #     elif self.conf['qr'] == 'tty':
+    #         print(qr.terminal(quiet_zone=1))
+
     def gen_qr_code(self, qr_file_path):
-        string = 'http://login.weixin.qq.com/1/' + self.uuid
-        qr = pyqrcode.create(string)
-        if self.conf['qr'] == 'png':
-            qr.png(qr_file_path, scale=8)
-            show_images(qr_file_path)
-        elif self.conf['qr'] == 'tty':
-            print(qr.terminal(quiet_zone=1))
+        succeed = False
+
+        if sys.platform.startswith('win'):
+            succeed = self._show_images(qr_file_path)
+        else:
+            succeed = self._str2qr()
+
+        return succeed
 
     def get_uuid(self):
-        url = 'https://login.weixin.qq.com/jslogin'
+        url = 'https://login.wx.qq.com/jslogin'
         params = {
             'appid': 'wx782c26e4c19acffb',
             'fun': 'new',
@@ -976,12 +1001,15 @@ class WxApi:
         r = self.session.get(url, params=params)
         r.encoding = 'utf-8'
         data = r.text
-        regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid= "(\S+?)"'
+        # regx = r'window.QRLogin.code = 200; window.QRLogin.uuid = "QfZ1bC4ClA==";'
+        regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid = "(\S+?)";'
         pm = re.search(regx, data)
         if pm:
             code = pm.group(1)
             self.uuid = pm.group(2)
             return code == '200'
+        else:
+            print(data)
         return False
 
     def do_request(self, url):
@@ -1003,6 +1031,7 @@ class WxApi:
         """
 
         LOGIN_TEMPLATE = 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s'
+        LOGIN_TEMPLATE = 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s'
         tip = 1
 
         try_later_secs = 1
@@ -1019,7 +1048,7 @@ class WxApi:
                 tip = 0
             elif code == SUCCESS:
                 param = re.search(r'window.redirect_uri="(\S+?)";', data)
-                redirect_uri = param.group(1) + 'fuc=new'
+                redirect_uri = param.group(1) + '&fun=new'
                 self.redirect_uri = redirect_uri
                 self.base_url = redirect_uri[:redirect_uri.rfind('/')]
                 return code
@@ -1039,8 +1068,11 @@ class WxApi:
         r = self.session.get(self.redirect_uri)
         r.encoding = 'utf-8'
         data = r.text
-        doc = xml.dom.minidom.parseString(data)
-        root = doc._get_documentElement()
+        doc = xml.dom.minidom.parseString(yattag.indent(data))
+        root = doc.documentElement
+
+        # parser = etree.XMLParser(recover=True)
+        # root = etree.fromstring(data, parser=parser)
 
         for node in root.childNodes:
             if node.nodeName == 'skey':
@@ -1048,12 +1080,14 @@ class WxApi:
             elif node.nodeName == 'wxsid':
                 self.sid = node.childNodes[0].data
             if node.nodeName == 'wxuin':
-                self.wxuin = node.childNodes[0].data
+                self.uin = node.childNodes[0].data
             if node.nodeName == 'pass_ticket':
                 self.pass_ticket = node.childNodes[0].data
 
         if '' in (self.skey, self.sid, self.uin, self.pass_ticket):
             return False
+        else:
+            print('[INFO] get skey, sid etc succeed.')
 
         self.base_request = {
             'Uin': self.uin,
@@ -1113,6 +1147,8 @@ class WxApi:
             '_': int(time.time()),
         }
         url = 'https://' + self.sync_host + '.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
+        # if self.DEBUG:
+        #     print('sync_check url: ' + url)
 
         try:
             r = self.session.get(url, timeout=60)
@@ -1126,12 +1162,12 @@ class WxApi:
             return [-1, -1]
 
     def sync(self):
-        url = self.base_url + 'webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s' \
+        url = self.base_url + '/webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s' \
                               % (self.sid, self.skey, self.pass_ticket)
         params = {
             'BaseRequest': self.base_request,
             'SyncKey': self.sync_key,
-            'rr': ~int(time.time())
+            'rr': int(time.time())
         }
 
         try:
@@ -1140,32 +1176,37 @@ class WxApi:
             dic = json.loads(r.text)
             if dic['BaseResponse']['Ret'] == 0:
                 self.sync_key = dic['SyncKey']
-                self.sync_key_str = '|'.join([keyVal['Key'] + '_' + keyVal['Val'] for keyVal in self.sync_key['List']])
-            return dic
+                self.sync_key_str = '|'.join([str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
+                return dic
         except Exception as e:
-            return None
+           traceback.print_exc()
+
+        if self.DEBUG:
+            print('[DEBUG] sync check return nothing!')
+
 
     def get_icon(self, uid, gid=None):
         "获取联系人或群聊成员头像"
         if gid is None:
             url = self.base_url + '/webwxgeticon?username=%s&skey=%s' % (uid, self.skey)
         else:
-            url = self.base_url + '/webwxgeticon?username=%s&skey=%s&chatroomid=%s' % (uid, self.skey,self.encry_chat_room_id_list[gid])
+            url = self.base_url + '/webwxgeticon?username=%s&skey=%s&chatroomid=%s' % (
+                uid, self.skey, self.encry_chat_room_id_list[gid])
 
-        r=self.session.get(url)
+        r = self.session.get(url)
         data = r.content
-        fn = 'icon_'+uid+'jpg'
-        with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+        fn = 'icon_' + uid + 'jpg'
+        with open(os.path.join(self.temp_pwd, fn), 'wb') as f:
             f.write(data)
         return fn
 
-    def get_head_img(self,uid):
+    def get_head_img(self, uid):
         "获取群头像"
-        url = self.base_url+'/webwxgetheadimg?username=%s&skey=&s' %(uid,self.skey)
+        url = self.base_url + '/webwxgetheadimg?username=%s&skey=%s' % (uid, self.skey)
         r = self.session.get(url)
         data = r.content
-        fn = 'head_'+uid+'.jpg'
-        with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+        fn = 'head_' + uid + '.jpg'
+        with open(os.path.join(self.temp_pwd, fn), 'wb') as f:
             f.write(data)
         return fn
 
@@ -1193,23 +1234,63 @@ class WxApi:
             f.write(data)
         return fn
 
-    def set_remarkname(self,uid,remarkname):
-        url = self.base_url+'webwxoplog?lang=zh_CN&pass_ticket=%s' %self.pass_ticket
+    def set_remarkname(self, uid, remarkname):
+        url = self.base_url + 'webwxoplog?lang=zh_CN&pass_ticket=%s' % self.pass_ticket
         remarkname = self.to_unicode(remarkname)
         params = {
-            'BaseRequest':self.base_request,
-            'CmdId':2,
-            'RemarkName':remarkname,
-            'UserName':uid
+            'BaseRequest': self.base_request,
+            'CmdId': 2,
+            'RemarkName': remarkname,
+            'UserName': uid
         }
 
         try:
-            r = self.session.post(url,data = json.dumps(params),timeout=60)
-            r.encoding='utf-8'
+            r = self.session.post(url, data=json.dumps(params), timeout=60)
+            r.encoding = 'utf-8'
             dic = json.loads(r.text)
             return dic['BaseResponse']['ErrMsg']
-        except:
+        except Exception as e:
             return None
+
+    def _show_images(self, filepath):
+        url = 'https://login.weixin.qq.com/qrcode/' + self.uuid
+        params = {
+            't': 'webwx',
+            '_': int(time.time())
+        }
+
+        headers = {'content-type': 'image/jpeg;charset=UTF-8'}
+        # data = self.session.get(url, headers=headers, data=json.dumps(params))
+        r = self.session.get(url)
+        QR_CODE_PATH = self._save_File(filepath, r.content)
+        os.startfile(QR_CODE_PATH)
+
+        return True
+
+    def _str2qr(self):
+        pass
+
+    def _save_File(self, filename, data):
+        with open(filename, 'wb') as f:
+            f.write(data)
+            f.close()
+        return filename
+
+        # 不可用的show image 方法
+        # def show_images(file_path):
+
+
+# if sys.version_info >= (3, 3):
+#         from shlex import quote
+#     else:
+#         from pipes import quote
+#
+#     if sys.platform == 'darwin':
+#         command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
+#         os.system(command)
+#     else:
+#         webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
+
 
 def main():
     print("do sth")
