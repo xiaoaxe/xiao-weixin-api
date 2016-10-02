@@ -91,7 +91,8 @@ class TuringWxBot(WxApi):
 
         # 只有个人消息的时候，才回复这个
         is_person = False
-        if msg['msg_type_id'] == 4 and msg['content']['type'] == 0:
+        # if msg['msg_type_id'] == 4 and msg['content']['type'] == 0:
+        if msg['msg_type_id'] == 4:
             is_person = True
 
         if not reply:
@@ -133,13 +134,45 @@ class TuringWxBot(WxApi):
             print('[INFO] user: ' + msg['content']['data'])
             print('[INFO] robot: ' + reply)
 
+    def schedule(self):
+        content = u'我很乖'
+
+        user = u'小号'
+
+        push = False
+        hour = '22'
+
+        if isExactHour(hour):
+            push = True
+
+        if push:
+            if not self.send_msg_by_uid(content, dst=user):
+                print('[ERROR] schedule task exec failed!!!')
+            time.sleep(60)
+
+
+def isExactHour(h):
+    time_array = time.localtime(time.time())
+    # format_time = time.strftime("%Y-%m-%d %H:%M:%S", time.time())
+    hour = time.strftime("%H", time_array)
+    minute = time.strftime("%M", time_array)
+    second = time.strftime("%S", time_array)
+    # if h ==  hour and minute =='00' and second =='00':
+    if h == hour and minute == '00':
+        return True
+    return False
+
 
 def main():
     bot = TuringWxBot()
     # bot.DEBUG = True
-
     bot.run()
 
 
+def test():
+    print(isExactHour('22'))
+
+
 if __name__ == '__main__':
-    main()
+    # main()
+    test()
