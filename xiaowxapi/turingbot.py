@@ -25,7 +25,7 @@ class TuringWxBot(WxApi):
         WxApi.__init__(self)
 
         self.turing_key = ""
-        self.robot_switch = True
+        self.robot_switch = False
 
         try:
             cf = ConfigParser()
@@ -57,8 +57,6 @@ class TuringWxBot(WxApi):
             else:
                 result = response['text'].replace('<br>', '   ')
 
-            print('robot: ' + result)
-
             if result:
                 return result
             else:
@@ -73,63 +71,72 @@ class TuringWxBot(WxApi):
             for i in stop_cmd:
                 if i == msg_data:
                     self.robot_switch = False
-                    self.send_msg_by_uid(u'[ROBOT] 机器人自动回复已关闭T_T', msg['to_user_id'])
-                    return True
+                    s = u'[使用"开始"开启] 机器人自动回复已关闭T_T'
+                    return s
         else:
             for i in start_cmd:
                 if i == msg_data:
                     self.robot_switch = True
-                    self.send_msg_by_uid(u'[ROBOT] 机器人自动回复已开启^_^', msg['to_user_id'])
-                    return True
+                    s = u'[使用"结束"关闭] 机器人自动回复已开启^_^'
+                    return s
 
-        return False
+        return None
 
     def handle_msg_all(self, msg):
-        if self.switch_bot(msg):
-            return
-
-        if not self.robot_switch and msg['content']['type'] != 0:
-            s = '机器人已关闭(使用"开始"或者"结束"控制机器人) 或者 不支持的消息类型'
-            return s
+        reply = self.switch_bot(msg)
 
         # 回复自己
         # if msg['msg_type_id'] == 4 and msg['content']['type']==0:
         #     self.switch_bot(msg)
 
-        if msg['msg_type_id'] == 4 and msg['content']['type'] == 0:  # friend msg
-            self.send_msg_by_uid(self.turing_intelligent_reply(msg['user''id'], msg['content']['data']),
-                                 msg['user']['id'])
-        elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group msg
-            if 'detail' in msg['content']:
-                my_names = self.get_group_member_name(self.my_account['UserName'], msg['user']['id'])
-                if my_names is None:
-                    my_names = {}
-                if 'NickName' in self.my_account and self.my_account['NickName']:
-                    my_names['nickname2'] = self.my_account['NickName']
-                if 'RemarkName' in self.my_account and self.my_account['RemarkName']:
-                    my_names['remarkname2'] = self.my_account['RemarkName']
+        # 只有个人消息的时候，才回复这个
+        is_person = False
+        if msg['msg_type_id'] == 4 and msg['content']['type'] == 0:
+            is_person = True
 
-                is_at_me = False
-                for detail in msg['content']['detail']:
-                    if detail['type'] == 'at':
-                        for k in my_names:
-                            if my_names[k] and my_names[k] == detail['value']:
-                                is_at_me = True
-                                break
+        if not reply:
+            if is_person:
+                if not self.robot_switch:
+                    reply = '[使用"开始""结束"控制机器人] 机器人已关闭>_<'
+                elif msg['content']['type'] != 0 and is_person:
+                    reply = '抱歉，不支持的消息类型'
+                else:
+                    reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
 
-                if is_at_me:
-                    src_name = msg['content']['user']['name']
-                    txt = '不支持的消息类型'
-                    if msg['content']['type'] == 0:
-                        txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
-                    reply = "to {} : {}".format(src_name, txt)
-                    self.send_msg_by_uid(reply, msg['user']['id'])
+            elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group msg
+                if 'detail' in msg['content']:
+                    my_names = self.get_group_member_name(self.my_account['UserName'], msg['user']['id'])
+                    if my_names is None:
+                        my_names = {}
+                    if 'NickName' in self.my_account and self.my_account['NickName']:
+                        my_names['nickname2'] = self.my_account['NickName']
+                    if 'RemarkName' in self.my_account and self.my_account['RemarkName']:
+                        my_names['remarkname2'] = self.my_account['RemarkName']
+
+                    is_at_me = False
+                    for detail in msg['content']['detail']:
+                        if detail['type'] == 'at':
+                            for k in my_names:
+                                if my_names[k] and my_names[k] == detail['value']:
+                                    is_at_me = True
+                                    break
+
+                    if is_at_me:
+                        src_name = msg['content']['user']['name']
+                        txt = '抱歉，不支持的消息类型'
+                        if msg['content']['type'] == 0:
+                            txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
+                        reply = "@{} {}".format(src_name, txt)
+
+        if reply:
+            self.send_msg_by_uid(reply, msg['user']['id'])
+            print('[INFO] user: ' + msg['content']['data'])
+            print('[INFO] robot: ' + reply)
 
 
 def main():
     bot = TuringWxBot()
-    bot.DEBUG = True
-    # bot.conf['qr'] = 'tty'
+    # bot.DEBUG = True
 
     bot.run()
 
