@@ -22,10 +22,13 @@ import random
 import time
 import json
 import re
-import HTMLParser
+from html.parser import HTMLParser
 from traceback import format_exc
 from requests.exceptions import ConnectionError, ReadTimeout
 import mimetypes
+import pyqrcode
+import xml.dom.minidom
+from urllib import parse
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -848,12 +851,323 @@ class WxApi:
             return False
         url = self.base_url + '/webwxsendmsgimg?fun=async&f=json'
         data = {
-
+            'BaseRequest': self.base_request,
+            'Msg': {
+                'Type': 3,
+                'MediaId': mid,
+                'FromUserName': self.my_account['UserName'],
+                'ToUserName': uid,
+                'LocalID': str(time.time() * 1e7),
+                'ClientMsgId': str(time.time() * 1e7),
+            },
         }
+        if fpath[-4,] == '.gif':
+            url = self.base_url + '/webwxsendemoticon?fun=sys'
+            data['Msg']['Type'] = 47
+            data['Msg']['EmojiFlag'] = 2
+        try:
+            r = self.session.post(url, data=json.dumps(data))
+            res = json.loads(r.text)
+            if res['BaseResponse']['Ret'] == 0:
+                return True
+            else:
+                return False
+        except Exception as e:
+            return False
+
+    def get_user_id(self, name):
+        if name == '':
+            return None
+        name = self.to_unicode(name)
+        for contact in self.contact_list:
+            if 'RemarkName' in contact and contact['RemarkName'] == name:
+                return contact['UserName']
+            elif 'NickName' in contact and contact['NickName'] == name:
+                return contact['UserName']
+            elif 'DisplayName' in contact and contact['DisplayName'] == name:
+                return contact['UserName']
+
+        for group in self.group_list:
+            if 'RemarkName' in group and group['RemarkName'] == name:
+                return group['UserName']
+            elif 'NickName' in group and group['NickName'] == name:
+                return group['UserName']
+            elif 'DisplayName' in group and group['DisplayName'] == name:
+                return group['UserName']
+
+        return ''
+
+    def send_msg(self, name, word, isfile=False):
+        uid = self.get_user_id(name)
+        if uid is not None:
+            if isfile:
+                with open(word, 'r') as f:
+                    result = True
+                    for line in f.readlines():
+                        line = line.replace('\n', '')
+                        print("->{} : {}".format(name, line))
+                        if self.send_msg_by_uid(line, uid):
+                            pass
+                        else:
+                            result = False
+        else:
+            if self.DEBUG:
+                print('[ERROR] This user does not exist .')
+            return True
 
     @staticmethod
     def search_content(key, content, fmat='attr'):
-        pass
+        if fmat == 'attr':
+            pm = re.search(key + '\s?=\s?"([^"<]+)"', content)
+            if pm:
+                return pm.group(1)
+            elif fmat == 'xml':
+                pm = re.search('<{0}([^<]+)</{0}>'.format(key), content)
+                if pm:
+                    return pm.group(1)
+            return 'unknown'
+
+    def run(self):
+        self.get_uuid()
+        self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.png'))
+        print('[INFO] Please use WeChat to scan the QR Code. ')
+
+        result = self.wait4login()
+        if result != SUCCESS:
+            print('[ERROR] Web WeChat login failed. failed code = %s' % (result))
+
+        if self.login():
+            print('[INFO] Web WeChat login succeed .')
+        else:
+            print('[ERROR] Web WeChat login failed .')
+            return
+
+        if self.init():
+            print('[INFO] Web WeChat init succeed .')
+        else:
+            print('[ERROR] Web WeChat init failed .')
+            return
+
+        self.status_notify()
+        self.get_contact()
+
+        print('[INFO] Get %d contacts' % len(self.contact_list))
+        print('[INFO] Start to process messages.')
+
+        self.proc_msg()
+
+    def gen_qr_code(self, qr_file_path):
+        string = 'http://login.weixin.qq.com/1/' + self.uuid
+        qr = pyqrcode.create(string)
+        if self.conf['qr'] == 'png':
+            qr.png(qr_file_path, scale=8)
+            show_images(qr_file_path)
+        elif self.conf['qr'] == 'tty':
+            print(qr.terminal(quiet_zone=1))
+
+    def get_uuid(self):
+        url = 'https://login.weixin.qq.com/jslogin'
+        params = {
+            'appid': 'wx782c26e4c19acffb',
+            'fun': 'new',
+            'lang': 'zh_CN',
+            '_': int(time.time()) * 1000 + random.randint(1, 999)
+        }
+        r = self.session.get(url, params=params)
+        r.encoding = 'utf-8'
+        data = r.text
+        regx = r'window.QRLogin.code = (\d+); window.QRLogin.uuid= "(\S+?)"'
+        pm = re.search(regx, data)
+        if pm:
+            code = pm.group(1)
+            self.uuid = pm.group(2)
+            return code == '200'
+        return False
+
+    def do_request(self, url):
+        r = self.session.get(url)
+        r.encoding = 'utf-8'
+        data = r.text
+        param = re.search(r'window.code=(\d+);', data)
+        code = param.group(1)
+        return code, data
+
+    def wait4login(self):
+        """
+        http comet:
+        tip = 1, 等待用户扫描二维码
+        201: scaned
+        408: timeout
+        tip = 0, 等待用户确认登录
+        200: confirmed
+        """
+
+        LOGIN_TEMPLATE = 'https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s'
+        tip = 1
+
+        try_later_secs = 1
+        MAX_RETRY_TIMES = 10
+
+        code = UNKNOWN
+
+        retry_time = MAX_RETRY_TIMES
+        while retry_time > 0:
+            url = LOGIN_TEMPLATE % (tip, self.uuid, int(time.time()))
+            code, data = self.do_request(url)
+            if code == SCANED:
+                print('[INFO] Please confirm to login.')
+                tip = 0
+            elif code == SUCCESS:
+                param = re.search(r'window.redirect_uri="(\S+?)";', data)
+                redirect_uri = param.group(1) + 'fuc=new'
+                self.redirect_uri = redirect_uri
+                self.base_url = redirect_uri[:redirect_uri.rfind('/')]
+                return code
+            elif code == TIMEOUT:
+                print('[ERROR] WeChat login timeout. retry in %s secs later...' % try_later_secs)
+
+                tip = 1
+                retry_time -= 1
+                time.sleep(try_later_secs)
+
+        return code
+
+    def login(self):
+        if len(self.redirect_uri) < 4:
+            print('[ERROR] Login failed due to network problem, please try again,')
+            return False
+        r = self.session.get(self.redirect_uri)
+        r.encoding = 'utf-8'
+        data = r.text
+        doc = xml.dom.minidom.parseString(data)
+        root = doc._get_documentElement()
+
+        for node in root.childNodes:
+            if node.nodeName == 'skey':
+                self.skey = node.childNodes[0].data
+            elif node.nodeName == 'wxsid':
+                self.sid = node.childNodes[0].data
+            if node.nodeName == 'wxuin':
+                self.wxuin = node.childNodes[0].data
+            if node.nodeName == 'pass_ticket':
+                self.pass_ticket = node.childNodes[0].data
+
+        if '' in (self.skey, self.sid, self.uin, self.pass_ticket):
+            return False
+
+        self.base_request = {
+            'Uin': self.uin,
+            'Sid': self.sid,
+            'Skey': self.skey,
+            'DeviceID': self.device_id,
+        }
+        return True
+
+    def init(self):
+        url = self.base_url + '/webwxinit?r=%i&lang=en_US&pass_ticket=%s' % (int(time.time()), self.pass_ticket)
+        params = {
+            'BaseRequest': self.base_request
+        }
+
+        r = self.session.post(url, data=json.dumps(params))
+        r.encoding = 'utf-8'
+        dic = json.loads(r.text)
+        self.sync_key = dic['SyncKey']
+        self.my_account = dic['User']
+        self.sync_key_str = '|'.join([str(keyVal['Key']) + '_' + str(keyVal['Val'])
+                                      for keyVal in self.sync_key['List']])
+        return dic['BaseResponse']['Ret'] == 0
+
+    def status_notify(self):
+        url = self.base_url + '/webwxstatusnotify?lang=zh_CN&pass_ticket=%s' % self.pass_ticket
+        self.base_request['Uin'] = int(self.base_request['Uin'])
+        params = {
+            'BaseRequest': self.base_request,
+            'Code': 3,
+            'FromUserName': self.my_account['UserName'],
+            'ToUserName': self.my_account['UserName'],
+            'ClientMsgId': int(time.time())
+        }
+
+        r = self.session.post(url, data=json.dumps(params))
+        r.encoding = 'utf-8'
+        dic = json.loads(r.text)
+        return dic['BaseResponse']['Ret'] == 0
+
+    def test_sync_check(self):
+        for host in ['webpush', 'webpush2']:
+            self.sync_host = host
+            retcode = self.sync_check()[0]
+            if retcode == '0':
+                return True
+            return False
+
+    def sync_check(self):
+        params = {
+            'r': int(time.time()),
+            'sid': self.sid,
+            'uin': self.uin,
+            'skey': self.skey,
+            'deviceid': self.device_id,
+            'synckey': self.sync_key_str,
+            '_': int(time.time()),
+        }
+        url = 'https://' + self.sync_host + '.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
+
+        try:
+            r = self.session.get(url, timeout=60)
+            r.encoding = 'utf-8'
+            data = r.text
+            pm = re.search(r'window.synccheck=\{retcode:"(\d+)",selector:"(\d+)"\}', data)
+            retcode = pm.group(1)
+            selector = pm.group(2)
+            return [retcode, selector]
+        except Exception as e:
+            return [-1, -1]
+
+    def sync(self):
+        url = self.base_url + 'webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s' \
+                              % (self.sid, self.skey, self.pass_ticket)
+        params = {
+            'BaseRequest': self.base_request,
+            'SyncKey': self.sync_key,
+            'rr': ~int(time.time())
+        }
+
+        try:
+            r = self.session.post(url, data=json.dumps(params), timeout=60)
+            r.encoding = 'utf-8'
+            dic = json.loads(r.text)
+            if dic['BaseResponse']['Ret'] == 0:
+                self.sync_key = dic['SyncKey']
+                self.sync_key_str = '|'.join([keyVal['Key'] + '_' + keyVal['Val'] for keyVal in self.sync_key['List']])
+            return dic
+        except Exception as e:
+            return None
+
+    def get_icon(self, uid, gid=None):
+        "获取联系人或群聊成员头像"
+        if gid is None:
+            url = self.base_url + '/webwxgeticon?username=%s&skey=%s' % (uid, self.skey)
+        else:
+            url = self.base_url + '/webwxgeticon?username=%s&skey=%s&chatroomid=%s' % (uid, self.skey,self.encry_chat_room_id_list[gid])
+
+        r=self.session.get(url)
+        data = r.content
+        fn = 'icon_'+uid+'jpg'
+        with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+            f.write(data)
+        return fn
+
+    def get_head_img(self,uid):
+        "获取群头像"
+        url = self.base_url+'/webwxgetheadimg?username=%s&skey=&s' %(uid,self.skey)
+        r = self.session.get(url)
+        data = r.content
+        fn = 'head_'+uid+'.jpg'
+        with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+            f.write(data)
+        return fn
 
     def get_img_url(self, msgid):
         return self.base_url + '/webwxgetmsgimg?MsgID=%s&skey=%s' % (msgid, self.skey)
@@ -879,32 +1193,23 @@ class WxApi:
             f.write(data)
         return fn
 
-    def test_sync_check(self):
-        pass
-
-    def sync_check(self):
-        pass
-
-    def sync(self):
-        url = self.base_url + 'webwxsync?sid=%s&skey=%s&lang=en_US&pass_ticket=%s' \
-                              % (self.sid, self.skey, self.pass_ticket)
+    def set_remarkname(self,uid,remarkname):
+        url = self.base_url+'webwxoplog?lang=zh_CN&pass_ticket=%s' %self.pass_ticket
+        remarkname = self.to_unicode(remarkname)
         params = {
-            'BaseRequest': self.base_request,
-            'SyncKey': self.sync_key,
-            'rr': ~int(time.time())
+            'BaseRequest':self.base_request,
+            'CmdId':2,
+            'RemarkName':remarkname,
+            'UserName':uid
         }
 
         try:
-            r = self.session.post(url, data=json.dumps(params), timeout=60)
-            r.encoding = 'utf-8'
+            r = self.session.post(url,data = json.dumps(params),timeout=60)
+            r.encoding='utf-8'
             dic = json.loads(r.text)
-            if dic['BaseResponse']['Ret'] == 0:
-                self.sync_key = dic['SyncKey']
-                self.sync_key_str = '|'.join([keyVal['Key'] + '_' + keyVal['Val'] for keyVal in self.sync_key['List']])
-            return dic
-        except Exception as e:
+            return dic['BaseResponse']['ErrMsg']
+        except:
             return None
-
 
 def main():
     print("do sth")
