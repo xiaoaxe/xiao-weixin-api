@@ -129,7 +129,7 @@ class TuringWxBot(WxApi):
 def main():
     bot = TuringWxBot()
     bot.DEBUG = True
-    bot.conf['qr'] = 'png'
+    # bot.conf['qr'] = 'tty'
 
     bot.run()
 
