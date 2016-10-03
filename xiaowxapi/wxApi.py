@@ -31,6 +31,7 @@ import yattag
 from requests.exceptions import ConnectionError, ReadTimeout
 
 import codecs
+from pipes import quote
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -540,7 +541,7 @@ class WxApi:
         """
         for msg in r['AddMsgList']:
             user = {'id': msg['FromUserName'], 'name': 'unknown'}
-            if msg['MsgType'] == 51: #init msg
+            if msg['MsgType'] == 51:  # init msg
                 msg_type_id = 0
                 user['name'] = 'system'
             elif msg['MsgType'] == 37:
@@ -559,16 +560,16 @@ class WxApi:
             elif msg['ToUserName'] == 'filehelper':
                 msg_type_id = 1
                 user['name'] = 'file_helper'
-            elif msg['FromUserName'][:2] == '@@': #group
+            elif msg['FromUserName'][:2] == '@@':  # group
                 msg_type_id = 3
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_contact(msg['FromUserName']): #contact
+            elif self.is_contact(msg['FromUserName']):  # contact
                 msg_type_id = 4
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_public(msg['FromUserName']): #public
+            elif self.is_public(msg['FromUserName']):  # public
                 msg_type_id = 5
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
-            elif self.is_special(msg['FromUserName']): #special
+            elif self.is_special(msg['FromUserName']):  # special
                 msg_type_id = 6
                 user['name'] = self.get_contact_prefer_name(self.get_contact_name(user['id']))
             else:
@@ -917,7 +918,7 @@ class WxApi:
                     return result
             else:
                 word = self.to_unicode(word)
-                if self.send_msg_by_uid(word,uid):
+                if self.send_msg_by_uid(word, uid):
                     return True
                 else:
                     return False
@@ -984,12 +985,7 @@ class WxApi:
     #         print(qr.terminal(quiet_zone=1))
 
     def gen_qr_code(self, qr_file_path):
-        succeed = False
-
-        if sys.platform.startswith('win'):
-            succeed = self._show_images(qr_file_path)
-        else:
-            succeed = self._str2qr()
+        succeed = self._show_images(qr_file_path)
 
         return succeed
 
@@ -1179,14 +1175,14 @@ class WxApi:
             dic = json.loads(r.text)
             if dic['BaseResponse']['Ret'] == 0:
                 self.sync_key = dic['SyncKey']
-                self.sync_key_str = '|'.join([str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
+                self.sync_key_str = '|'.join(
+                        [str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
                 return dic
         except Exception as e:
-           traceback.print_exc()
+            traceback.print_exc()
 
         if self.DEBUG:
             print('[DEBUG] sync check return nothing!')
-
 
     def get_icon(self, uid, gid=None):
         "获取联系人或群聊成员头像"
@@ -1266,9 +1262,18 @@ class WxApi:
         # data = self.session.get(url, headers=headers, data=json.dumps(params))
         r = self.session.get(url)
         QR_CODE_PATH = self._save_File(filepath, r.content)
-        os.startfile(QR_CODE_PATH)
 
-        return True
+        if sys.platform.startswith('win'):
+            os.startfile(QR_CODE_PATH)
+        elif sys.platform == 'darwin':
+            command = 'open -a /Applications/Previews.app %s &' % quote(QR_CODE_PATH)
+            os.system(command)
+        else:
+            print('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
+
+        if QR_CODE_PATH:
+            return True
+        return False
 
     def _str2qr(self):
         pass
@@ -1282,22 +1287,20 @@ class WxApi:
         # 不可用的show image 方法
         # def show_images(file_path):
 
-
-# if sys.version_info >= (3, 3):
-#         from shlex import quote
-#     else:
-#         from pipes import quote
-#
-#     if sys.platform == 'darwin':
-#         command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
-#         os.system(command)
-#     else:
-#         webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
-
-
-def main():
-    print("do sth")
+    # if sys.version_info >= (3, 3):
+    #         from shlex import quote
+    #     else:
+    #         from pipes import quote
+    #
+    #     if sys.platform == 'darwin':
+    #         command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
+    #         os.system(command)
+    #     else:
+    #         webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
 
 
-if __name__ == '__main__':
-    main()
+    def main():
+        print("do sth")
+
+    if __name__ == '__main__':
+        main()

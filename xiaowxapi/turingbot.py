@@ -26,6 +26,7 @@ class TuringWxBot(WxApi):
 
         self.turing_key = ""
         self.robot_switch = False
+        self.close_cnt = 0
 
         try:
             cf = ConfigParser()
@@ -98,7 +99,8 @@ class TuringWxBot(WxApi):
         if not reply:
             if is_person:
                 if not self.robot_switch:
-                    reply = '[使用"开始""结束"控制机器人] 机器人已关闭>_<'
+                    if self.reply_cnt():
+                        reply = '[使用"开始""结束"控制机器人] 机器人已关闭>_<'
                 elif msg['content']['type'] != 0 and is_person:
                     reply = '抱歉，不支持的消息类型'
                 else:
@@ -129,6 +131,10 @@ class TuringWxBot(WxApi):
                             txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
                         reply = "@{} {}".format(src_name, txt)
 
+        #重置计数
+        if self.robot_switch:
+            self.close_cnt = 0
+
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
             print('[INFO] user: ' + msg['content']['data'])
@@ -149,6 +155,17 @@ class TuringWxBot(WxApi):
             if not self.send_msg_by_uid(content, dst=user):
                 print('[ERROR] schedule task exec failed!!!')
             time.sleep(60)
+
+    def reply_cnt(self):
+        if self.close_cnt is 5:
+            self.close_cnt = 0
+
+        if self.close_cnt is 0:
+            self.close_cnt += 1
+            return True
+        else:
+            self.close_cnt += 1
+            return False
 
 
 def isExactHour(h):
@@ -174,5 +191,5 @@ def test():
 
 
 if __name__ == '__main__':
-    # main()
-    test()
+    main()
+    # test()
