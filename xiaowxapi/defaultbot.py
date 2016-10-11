@@ -15,7 +15,7 @@
 """
 
 import time
-from xiaowxapi.wxapi123 import *
+from xiaowxapi.wxapi import *
 
 
 class DefaultBot(WxApi):

@@ -15,7 +15,7 @@
 @time: 2016/10/2 13:06
 """
 
-from xiaowxapi.wxapi123 import *
+from xiaowxapi.wxapi import *
 from configparser import ConfigParser
 import json
 
