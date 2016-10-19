@@ -25,6 +25,7 @@ import traceback
 import xml.dom.minidom
 from traceback import format_exc
 from urllib import parse
+import webbrowser
 
 import requests
 import yattag
@@ -598,7 +599,7 @@ class WxApi:
 
     def proc_msg(self):
         if not self.test_sync_check():
-            print('sync check test failed !')
+             print('sync check test failed !')
 
         while True:
             check_time = time.time()
@@ -944,7 +945,7 @@ class WxApi:
             print('get qruuid err, exit')
             sys.exit(-1)
 
-        if not self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.png')):
+        if not self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.jpg')):
             print('get qrcode err, exit')
             sys.exit(-1)
 
@@ -1131,6 +1132,8 @@ class WxApi:
         for host in ['webpush', 'webpush2']:
             self.sync_host = host
             retcode = self.sync_check()[0]
+            print('test_sync_check, retcode: {}'.format(retcode))
+
             if retcode == '0':
                 return True
             return False
@@ -1156,6 +1159,9 @@ class WxApi:
             pm = re.search(r'window.synccheck=\{retcode:"(\d+)",selector:"(\d+)"\}', data)
             retcode = pm.group(1)
             selector = pm.group(2)
+
+            print('sync_check, ret:{} sel:{}'.format(retcode,selector))
+
             return [retcode, selector]
         except Exception as e:
             return [-1, -1]
@@ -1268,8 +1274,9 @@ class WxApi:
         elif sys.platform == 'darwin':
             command = 'open -a /Applications/Previews.app %s &' % quote(QR_CODE_PATH)
             os.system(command)
-        else:
-            print('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
+        elif sys.platform.startswith('Linux'):
+            # print('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
+            webbrowser.open(os.path.join(os.getcwd(), QR_CODE_PATH))
 
         if QR_CODE_PATH:
             return True

@@ -54,7 +54,7 @@ class TuringWxBot(WxApi):
                 result = response['url']
             elif response['code'] == 302000:
                 for k in response['list']:
-                    result = result + '[' + k['soruce'] + "]" + k['article'] + '\t' + k['detailurl'] + '\n'
+                    result = result + '[' + k['source'] + "]" + k['article'] + '\t' + k['detailurl'] + '\n'
             else:
                 result = response['text'].replace('<br>', '   ')
 
