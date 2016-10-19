@@ -157,7 +157,7 @@ class TuringWxBot(WxApi):
             time.sleep(60)
 
     def reply_cnt(self):
-        if self.close_cnt is 5:
+        if self.close_cnt is 42:
             self.close_cnt = 0
 
         if self.close_cnt is 0:
@@ -182,7 +182,7 @@ def isExactHour(h):
 
 def main():
     bot = TuringWxBot()
-    # bot.DEBUG = True
+    bot.DEBUG = True
     bot.run()
 
 

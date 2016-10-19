@@ -599,7 +599,7 @@ class WxApi:
 
     def proc_msg(self):
         if not self.test_sync_check():
-             print('sync check test failed !')
+            print('sync check test failed !')
 
         while True:
             check_time = time.time()
@@ -1134,6 +1134,8 @@ class WxApi:
             retcode = self.sync_check()[0]
             print('test_sync_check, retcode: {}'.format(retcode))
 
+            retcode, selector = self.sync_check()
+            print('{},{}'.format(retcode, selector))
             if retcode == '0':
                 return True
             return False
@@ -1148,9 +1150,9 @@ class WxApi:
             'synckey': self.sync_key_str,
             '_': int(time.time()),
         }
-        url = 'https://' + self.sync_host + '.weixin.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
+        url = 'https://' + self.sync_host + '.wx.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
         # if self.DEBUG:
-        #     print('sync_check url: ' + url)
+        # print('sync_check url: ' + url)
 
         try:
             r = self.session.get(url, timeout=60)
@@ -1160,7 +1162,7 @@ class WxApi:
             retcode = pm.group(1)
             selector = pm.group(2)
 
-            print('sync_check, ret:{} sel:{}'.format(retcode,selector))
+            print('sync_check, ret:{} sel:{}'.format(retcode, selector))
 
             return [retcode, selector]
         except Exception as e:
@@ -1277,6 +1279,8 @@ class WxApi:
         elif sys.platform.startswith('Linux'):
             # print('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
             webbrowser.open(os.path.join(os.getcwd(), QR_CODE_PATH))
+        else:
+            print('Linux or other platform, please download your qrcode img in %s' % QR_CODE_PATH)
 
         if QR_CODE_PATH:
             return True
@@ -1294,20 +1298,21 @@ class WxApi:
         # 不可用的show image 方法
         # def show_images(file_path):
 
-    # if sys.version_info >= (3, 3):
-    #         from shlex import quote
-    #     else:
-    #         from pipes import quote
-    #
-    #     if sys.platform == 'darwin':
-    #         command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
-    #         os.system(command)
-    #     else:
-    #         webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
+        # if sys.version_info >= (3, 3):
+        #         from shlex import quote
+        #     else:
+        #         from pipes import quote
+        #
+        #     if sys.platform == 'darwin':
+        #         command = 'open -a /Applications/Previews.app %s &' % quote(file_path)
+        #         os.system(command)
+        #     else:
+        #         webbrowser.open(os.path.join(os.getcwd(), "temp", file_path))
 
 
-    def main():
-        print("do sth")
+def main():
+    print("do sth")
 
-    if __name__ == '__main__':
-        main()
+
+if __name__ == '__main__':
+    main()
