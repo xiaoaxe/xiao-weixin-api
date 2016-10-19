@@ -25,8 +25,8 @@ class TuringWxBot(WxApi):
         WxApi.__init__(self)
 
         self.turing_key = ""
-        self.robot_switch = False
-        self.close_cnt = 0
+        self.robot_switch = {}
+        self.close_cnt = {}
 
         try:
             cf = ConfigParser()
@@ -96,10 +96,16 @@ class TuringWxBot(WxApi):
         if msg['msg_type_id'] == 4:
             is_person = True
 
+        uid = msg['user']['id']
+
+        # 对于每一个用户，都初始化robot_switch
+        if uid not in self.robot_switch:
+            self.robot_switch[uid] = False
+
         if not reply:
             if is_person:
-                if not self.robot_switch:
-                    if self.reply_cnt():
+                if not self.robot_switch[uid]:
+                    if self.reply_cnt(uid):
                         reply = '[使用"开始""结束"控制机器人] 机器人已关闭>_<'
                 elif msg['content']['type'] != 0 and is_person:
                     reply = '抱歉，不支持的消息类型'
@@ -131,9 +137,9 @@ class TuringWxBot(WxApi):
                             txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
                         reply = "@{} {}".format(src_name, txt)
 
-        #重置计数
-        if self.robot_switch:
-            self.close_cnt = 0
+        # 重置计数
+        if self.robot_switch[uid]:
+            self.close_cnt[uid] = 0
 
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
@@ -156,15 +162,18 @@ class TuringWxBot(WxApi):
                 logging.info('[ERROR] schedule task exec failed!!!')
             time.sleep(60)
 
-    def reply_cnt(self):
-        if self.close_cnt is 42:
-            self.close_cnt = 0
+    def reply_cnt(self, uid):
+        if uid not in self.close_cnt:
+            self.close_cnt[uid] = 0
 
-        if self.close_cnt is 0:
-            self.close_cnt += 1
+        if self.close_cnt[uid] is 42:
+            self.close_cnt[uid] = 0
+
+        if self.close_cnt[uid] is 0:
+            self.close_cnt[uid] += 1
             return True
         else:
-            self.close_cnt += 1
+            self.close_cnt[uid] += 1
             return False
 
 
@@ -187,7 +196,8 @@ def main():
 
 
 def test():
-    logging.info(isExactHour('22'))
+    # logging.info(isExactHour('22'))
+    d = {"1": "2"}
 
 
 if __name__ == '__main__':
