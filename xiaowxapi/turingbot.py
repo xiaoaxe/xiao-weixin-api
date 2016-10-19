@@ -65,19 +65,24 @@ class TuringWxBot(WxApi):
 
     def switch_bot(self, msg):
         msg_data = msg['content']['data']
+        uid = msg['user']['id']
         start_cmd = [u'开始']
         stop_cmd = [u'结束']
 
-        if self.robot_switch:
+        # 对于每一个用户，都初始化robot_switch
+        if uid not in self.robot_switch:
+            self.robot_switch[uid] = False
+
+        if self.robot_switch[uid]:
             for i in stop_cmd:
                 if i == msg_data:
-                    self.robot_switch = False
+                    self.robot_switch[uid] = False
                     s = u'[使用"开始"开启] 机器人自动回复已关闭T_T'
                     return s
         else:
             for i in start_cmd:
                 if i == msg_data:
-                    self.robot_switch = True
+                    self.robot_switch[uid] = True
                     s = u'[使用"结束"关闭] 机器人自动回复已开启^_^'
                     return s
 
@@ -97,10 +102,6 @@ class TuringWxBot(WxApi):
             is_person = True
 
         uid = msg['user']['id']
-
-        # 对于每一个用户，都初始化robot_switch
-        if uid not in self.robot_switch:
-            self.robot_switch[uid] = False
 
         if not reply:
             if is_person:
@@ -154,7 +155,7 @@ class TuringWxBot(WxApi):
         push = False
         hour = '22'
 
-        if isExactHour(hour):
+        if is_exact_hour(hour):
             push = True
 
         if push:
@@ -177,7 +178,7 @@ class TuringWxBot(WxApi):
             return False
 
 
-def isExactHour(h):
+def is_exact_hour(h):
     time_array = time.localtime(time.time())
     # format_time = time.strftime("%Y-%m-%d %H:%M:%S", time.time())
     hour = time.strftime("%H", time_array)
