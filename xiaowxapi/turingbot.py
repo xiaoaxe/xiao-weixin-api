@@ -34,7 +34,7 @@ class TuringWxBot(WxApi):
             self.turing_key = cf.get('main', 'key')
         except Exception as e:
             pass
-        print('turingRobot key is : ' + self.turing_key)
+        logging.info('turingRobot key is : ' + self.turing_key)
 
     def turing_intelligent_reply(self, uid, msg):
         if self.turing_key:
@@ -137,8 +137,8 @@ class TuringWxBot(WxApi):
 
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
-            print('[INFO] user: ' + msg['content']['data'])
-            print('[INFO] robot: ' + reply)
+            logging.info('[INFO] user: ' + msg['content']['data'])
+            logging.info('[INFO] robot: ' + reply)
 
     def schedule(self):
         content = u'我很乖'
@@ -153,7 +153,7 @@ class TuringWxBot(WxApi):
 
         if push:
             if not self.send_msg_by_uid(content, dst=user):
-                print('[ERROR] schedule task exec failed!!!')
+                logging.info('[ERROR] schedule task exec failed!!!')
             time.sleep(60)
 
     def reply_cnt(self):
@@ -182,12 +182,12 @@ def isExactHour(h):
 
 def main():
     bot = TuringWxBot()
-    bot.DEBUG = True
+    # bot.DEBUG = True
     bot.run()
 
 
 def test():
-    print(isExactHour('22'))
+    logging.info(isExactHour('22'))
 
 
 if __name__ == '__main__':

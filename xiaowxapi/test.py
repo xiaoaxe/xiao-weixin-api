@@ -24,38 +24,38 @@ def main1():
     c = ChainMap(a, b)
 
     # del c['b']
-    print(c)
+    logging.info(c)
     del c['a']
     # c=c.new_child()
     c['c'] = 3
-    print(c)
+    logging.info(c)
 
 
 def main2():
     text = 'Today is 11/27/2012. PyCon starts 3/13/2013.'
     m = re.match(r'\d+/\d+/\d+', text)
-    print(m.group(0))
+    logging.info(m.group(0))
 
 
 def main3():
     s = "pýtĥö"
-    # print(s.encode("ascii","ignore").decode('ascii'))
+    # logging.info(s.encode("ascii","ignore").decode('ascii'))
 
 
 def main4():
-    # print( '{:>10s} {:>10s}'.format('Hello', 'World'))
-    print('{!r}'.format("3"))
-    print('{!a}'.format('hel'))
-    print('{!s}'.format('3'))
-    print('hello {0:>{1}} '.format('Kevin', 20))
+    # logging.info( '{:>10s} {:>10s}'.format('Hello', 'World'))
+    logging.info('{!r}'.format("3"))
+    logging.info('{!a}'.format('hel'))
+    logging.info('{!s}'.format('3'))
+    logging.info('hello {0:>{1}} '.format('Kevin', 20))
 
-    print(ord("你"))
-    print(chr(20321))
+    logging.info(ord("你"))
+    logging.info(chr(20321))
 
 def main5():
-    print(pow(2,16))
+    logging.info(pow(2,16))
     for i in range(0,pow(2,16)):
-        print(chr(i))
+        logging.info(chr(i))
 
 def main6():
     # re.sub()
@@ -68,4 +68,4 @@ if __name__ == '__main__':
 eightMore=#{robotName}\u4E0D\u8981\u8DDF\u4F60\u804A\u5929\u4E86|\u4E34\u8FD1\u5D29\u6E83\u503C\u3002\u3002|#{userName}\u4F60\u597D\uFF0C#{userName}\u518D\u89C1|\u597D\u597D\u7684\uFF0C\u600E\u4E48\u8FD9\u6837\u4E86\u5462|\u597D\u4E86\uFF0C\u4E0D\u8981\u9017\u6211\u73A9\u4E86\uFF0C\u597D\u5417|#{userName}\uFF0C\u4F60\u662F\u53D7\u523A\u6FC0\u4E86\uFF1F|\u81EA\u55E8\u633A\u6709\u610F\u601D\u7684\u5427|\u8BF4\u597D\u7684\u518D\u4E5F\u4E0D\u4EFB\u6027\u5462|\u5B9D\u5B9D\u73A9\u591F\u4E86\u5417\uFF1F
 recover=#{userName}\u7EC8\u4E8E\u73A9\u591F\u4E86\uFF1F|\u539F\u6765\u4F60\u6CA1\u50BB\uFF0C\u5E78\u597D|\u521A\u624D\u4F60\u600E\u4E48\u4E86\uFF1F|\u795E\u5FD7\u6B63\u5E38\u4E86\uFF1F
     """
-    print(s)
+    logging.info(s)

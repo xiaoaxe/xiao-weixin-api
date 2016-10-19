@@ -1,3 +1,5 @@
 .idea/
 xiaowxapi/__pycache__/
 xiaowxapi/temp/
+xiaowxapi/nohup.out
+xiaowxapi/req.log

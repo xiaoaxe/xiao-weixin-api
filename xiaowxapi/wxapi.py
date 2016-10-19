@@ -26,6 +26,7 @@ import xml.dom.minidom
 from traceback import format_exc
 from urllib import parse
 import webbrowser
+import logging
 
 import requests
 import yattag
@@ -33,6 +34,8 @@ from requests.exceptions import ConnectionError, ReadTimeout
 
 import codecs
 from pipes import quote
+
+logging.basicConfig(level=logging.INFO)
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -62,7 +65,7 @@ class SafeSession(requests.Session):
                                                         timeout, allow_redirects, proxies, hooks, stream, verify, cert,
                                                         json)
             except Exception as e:
-                print(e, traceback.format_exc())
+                logging.info(e, traceback.format_exc())
                 continue
 
 
@@ -406,7 +409,7 @@ class WxApi:
                 msg_content['data'] = pos
                 msg_content['detail'] = data
                 if self.DEBUG:
-                    print('---> %s [Location] %s' % (msg_prefix, pos))
+                    logging.info('---> %s [Location] %s' % (msg_prefix, pos))
             else:
                 msg_content['type'] = 0
                 if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # group text msg
@@ -421,9 +424,9 @@ class WxApi:
                     msg_content['data'] = content
                 if self.DEBUG:
                     try:
-                        print('---> %s [Text] %s' % (msg_prefix, msg_content['data']))
+                        logging.info('---> %s [Text] %s' % (msg_prefix, msg_content['data']))
                     except:
-                        print('---> %s [Text] illegal text' % msg_prefix)
+                        logging.info('---> %s [Text] illegal text' % msg_prefix)
         elif mtype == 3:
             msg_content['type'] = 3
             msg_content['data'] = self.get_img_url(msg_id)
@@ -431,7 +434,7 @@ class WxApi:
             msg_content['img'] = self.session.get(msg_content['data']).content
             if self.DEBUG:
                 image = self.get_img(msg_id)
-                print('---> %s [Image] %s' % (msg_prefix, image))
+                logging.info('---> %s [Image] %s' % (msg_prefix, image))
         elif mtype == 34:
             msg_content['type'] = 4
             msg_content['data'] = self.get_voice_url(msg_id)
@@ -439,12 +442,12 @@ class WxApi:
             msg_content['voice'] = self.session.get(msg_content['data']).content
             if self.DEBUG:
                 voice = self.get_voice(msg_id)
-                print('  %s [Voice] %s  ' % (msg_prefix, voice))
+                logging.info('  %s [Voice] %s  ' % (msg_prefix, voice))
         elif mtype == 37:
             msg_content['type'] = 37
             msg_content['data'] = msg['RecommendInfo']
             if self.DEBUG:
-                print('---> %s [useradd] %s' % (msg_prefix, msg['RecommendInfo']['NickName']))
+                logging.info('---> %s [useradd] %s' % (msg_prefix, msg['RecommendInfo']['NickName']))
         elif mtype == 42:
             msg_content['type'] = 5
             info = msg['RecommendInfo']
@@ -456,18 +459,18 @@ class WxApi:
                 'gender': ['unknown', 'famail', 'mail'][info['Sex']]
             }
             if self.DEBUG:
-                print('---> %s [Recommend]' % msg_prefix)
-                print('---> %s' '*' * 50)
-                print('---> |NickName: %s' % info['NickName'])
-                print('---> |Alias: %s' % info['Alias'])
-                print('---> |Location: %s %s' % (info['Province'], info['City']))
-                print('---> |Gender: %s' % ['unknown', 'famail', 'mail'][info['Sex']])
-                print('---> %s' '*' * 50)
+                logging.info('---> %s [Recommend]' % msg_prefix)
+                logging.info('---> %s' '*' * 50)
+                logging.info('---> |NickName: %s' % info['NickName'])
+                logging.info('---> |Alias: %s' % info['Alias'])
+                logging.info('---> |Location: %s %s' % (info['Province'], info['City']))
+                logging.info('---> |Gender: %s' % ['unknown', 'famail', 'mail'][info['Sex']])
+                logging.info('---> %s' '*' * 50)
         elif mtype == 47:
             msg_content['type'] = 6
             msg_content['data'] = self.search_content('cdnurl', content)
             if self.DEBUG:
-                print('---> %s [Animation] %s' % (msg_prefix, msg_content['data']))
+                logging.info('---> %s [Animation] %s' % (msg_prefix, msg_content['data']))
         elif mtype == 49:
             msg_content['type'] = 7
             if msg['AppMsgType'] == 3:
@@ -488,44 +491,44 @@ class WxApi:
             }
 
             if self.DEBUG:
-                print('---> %s [Share] %s' % (msg_prefix, app_msg_type))
-                print('---> %s' '*' * 50)
-                print('---> |title: %s' % msg['FileName'])
-                print('---> |desc: %s' % self.search_content('des', content, 'xml'))
-                print('---> |link: %s' % msg['Url'])
-                print('---> |from: %s' % self.search_content('des', content, 'xml'))
-                print('---> |content: %s' % (msg.get('content')[:20] if msg.get('content') else 'unknown'))
-                print('---> %s' '*' * 50)
+                logging.info('---> %s [Share] %s' % (msg_prefix, app_msg_type))
+                logging.info('---> %s' '*' * 50)
+                logging.info('---> |title: %s' % msg['FileName'])
+                logging.info('---> |desc: %s' % self.search_content('des', content, 'xml'))
+                logging.info('---> |link: %s' % msg['Url'])
+                logging.info('---> |from: %s' % self.search_content('des', content, 'xml'))
+                logging.info('---> |content: %s' % (msg.get('content')[:20] if msg.get('content') else 'unknown'))
+                logging.info('---> %s' '*' * 50)
 
         elif mtype == 62:
             msg_content['type'] = 8
             msg_content['data'] = content
             if self.DEBUG:
-                print('---> %s [Video] please check on mobiles' % msg_prefix)
+                logging.info('---> %s [Video] please check on mobiles' % msg_prefix)
 
         elif mtype == 53:
             msg_content['type'] = 9
             msg_content['data'] = content
             if self.DEBUG:
-                print('---> %s [Video Call]' % msg_prefix)
+                logging.info('---> %s [Video Call]' % msg_prefix)
 
         elif mtype == 10002:
             msg_content['type'] = 10
             msg_content['data'] = content
             if self.DEBUG:
-                print('---> %s [Redraw]' % msg_prefix)
+                logging.info('---> %s [Redraw]' % msg_prefix)
 
         elif mtype == 10000:
             msg_content['type'] = 12
             msg_content['data'] = content
             if self.DEBUG:
-                print('---> [Unknown]')
+                logging.info('---> [Unknown]')
 
         else:
             msg_content['type'] = 99
             msg_content['data'] = content
             if self.DEBUG:
-                print('---> %s[Unknown]' % msg_prefix)
+                logging.info('---> %s[Unknown]' % msg_prefix)
 
         return msg_content
 
@@ -550,11 +553,11 @@ class WxApi:
                 user['name'] = 'friend request'
                 content = msg['Content']
                 username = content[content.index('fromusername='): content.index('encryptusername')]
-                print(u'Friend Request')
-                print(u'NickName: ' + msg['RecommendInfo']['NickName'])
-                print(u'AppendInfo: ' + msg['RecommendInfo']['Content'])
-                print(u'Ticket: ' + msg['RecommendInfo']['Ticket'])
-                print(u'Wx Name: ' + username)
+                logging.info(u'Friend Request')
+                logging.info(u'NickName: ' + msg['RecommendInfo']['NickName'])
+                logging.info(u'AppendInfo: ' + msg['RecommendInfo']['Content'])
+                logging.info(u'Ticket: ' + msg['RecommendInfo']['Ticket'])
+                logging.info(u'Wx Name: ' + username)
             elif msg['FromUserName'] == self.my_account['UserName']:
                 msg_type_id = 1
                 user['name'] = 'self'
@@ -579,7 +582,7 @@ class WxApi:
             user['name'] = html.unescape(user['name'])
 
             if self.DEBUG and msg_type_id != 0:
-                print(u'---> [Msg] %s' % user['name'])
+                logging.info(u'---> [Msg] %s' % user['name'])
             content = self.extract_msg_content(msg_type_id, msg)
             message = {
                 'msg_type_id': msg_type_id,
@@ -599,15 +602,14 @@ class WxApi:
 
     def proc_msg(self):
         if not self.test_sync_check():
-            print('sync check test failed !')
+            logging.info('sync check test failed !')
 
         while True:
             check_time = time.time()
 
             try:
                 [retcode, selector] = self.sync_check()
-                if self.DEBUG:
-                    print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
+                logging.debug(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
                 if retcode == '1101':  # 其他网页端登录了微信
                     break
                 elif retcode == '0':
@@ -635,18 +637,18 @@ class WxApi:
                         pass
                     else:
                         if self.DEBUG:
-                            print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
+                            logging.info(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
                         r = self.sync()
                         if r is not None:
                             self.handle_msg(r)
                 else:
                     if self.DEBUG:
-                        print(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
+                        logging.info(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
 
                 self.schedule()
             except Exception as e:
-                print('---> {ERROR] Except in proc_msg')
-                print(format_exc())
+                logging.info('---> {ERROR] Except in proc_msg')
+                logging.info(format_exc())
 
             check_time = time.time() - check_time
             if check_time < 0.8:
@@ -777,7 +779,7 @@ class WxApi:
 
     def upload_media(self, fpath, is_img=False):
         if not os.path.exists(fpath):
-            print('---> [ERROR] File not exists.')
+            logging.info('---> [ERROR] File not exists.')
             return None
         url_1 = 'http://file.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
         url_2 = 'http://file2.wx.qq.com/cgi-bin/mmwebwx-bin/webwxuploadmedia?f=json'
@@ -810,7 +812,7 @@ class WxApi:
             if json.loads(r.text)['BaseResponse']['Ret'] != 0:
                 r = self.session.post(url_2, files=files)
                 if json.loads(r.text)['BaseResponse']['Ret'] != 0:
-                    print('---> [ERROR] upload media failsure.')
+                    logging.info('---> [ERROR] upload media failsure.')
                     return None
                 mid = json.loads(r.text)['MediaId']
                 return mid
@@ -910,7 +912,7 @@ class WxApi:
                     result = True
                     for line in f.readlines():
                         line = line.replace('\n', '')
-                        print("->{} : {}".format(name, line))
+                        logging.info("->{} : {}".format(name, line))
                         if self.send_msg_by_uid(line, uid):
                             pass
                         else:
@@ -925,7 +927,7 @@ class WxApi:
                     return False
         else:
             if self.DEBUG:
-                print('[ERROR] This user does not exist .')
+                logging.info('[ERROR] This user does not exist .')
             return False
 
     @staticmethod
@@ -942,37 +944,37 @@ class WxApi:
 
     def run(self):
         if not self.get_uuid():
-            print('get qruuid err, exit')
+            logging.info('get qruuid err, exit')
             sys.exit(-1)
 
         if not self.gen_qr_code(os.path.join(self.temp_pwd, 'wxqr.jpg')):
-            print('get qrcode err, exit')
+            logging.info('get qrcode err, exit')
             sys.exit(-1)
 
-        print('[INFO] Please use WeChat to scan the QR Code. ')
+        logging.info('[INFO] Please use WeChat to scan the QR Code. ')
 
         result = self.wait4login()
         if result != SUCCESS:
-            print('[ERROR] Web WeChat login failed. failed code = %s' % (result))
+            logging.info('[ERROR] Web WeChat login failed. failed code = %s' % (result))
 
         if self.login():
-            print('[INFO] Web WeChat login succeed.')
+            logging.info('[INFO] Web WeChat login succeed.')
         else:
-            print('[ERROR] Web WeChat login failed.')
+            logging.info('[ERROR] Web WeChat login failed.')
             return
 
         if self.init():
-            print('[INFO] Web WeChat init succeed.')
+            logging.info('[INFO] Web WeChat init succeed.')
         else:
-            print('[ERROR] Web WeChat init failed.')
+            logging.info('[ERROR] Web WeChat init failed.')
             return
 
         if not self.status_notify():
-            print('[ERROR] run status notify err')
+            logging.info('[ERROR] run status notify err')
         self.get_contact()
 
-        print('[INFO] Get %d contacts' % len(self.contact_list))
-        print('[INFO] Start to process messages...')
+        logging.info('[INFO] Get %d contacts' % len(self.contact_list))
+        logging.info('[INFO] Start to process messages...')
 
         self.proc_msg()
 
@@ -983,7 +985,7 @@ class WxApi:
     #         qr.png(qr_file_path, scale=8)
     #         show_images(qr_file_path)
     #     elif self.conf['qr'] == 'tty':
-    #         print(qr.terminal(quiet_zone=1))
+    #         logging.info(qr.terminal(quiet_zone=1))
 
     def gen_qr_code(self, qr_file_path):
         succeed = self._show_images(qr_file_path)
@@ -1009,7 +1011,7 @@ class WxApi:
             self.uuid = pm.group(2)
             return code == '200'
         else:
-            print(data)
+            logging.info(data)
         return False
 
     def do_request(self, url):
@@ -1044,7 +1046,7 @@ class WxApi:
             url = LOGIN_TEMPLATE % (tip, self.uuid, int(time.time()))
             code, data = self.do_request(url)
             if code == SCANED:
-                print('[INFO] Please confirm to login.')
+                logging.info('[INFO] Please confirm to login.')
                 tip = 0
             elif code == SUCCESS:
                 param = re.search(r'window.redirect_uri="(\S+?)";', data)
@@ -1053,7 +1055,7 @@ class WxApi:
                 self.base_url = redirect_uri[:redirect_uri.rfind('/')]
                 return code
             elif code == TIMEOUT:
-                print('[ERROR] WeChat login timeout. retry in %s secs later...' % try_later_secs)
+                logging.info('[ERROR] WeChat login timeout. retry in %s secs later...' % try_later_secs)
 
                 tip = 1
                 retry_time -= 1
@@ -1063,7 +1065,7 @@ class WxApi:
 
     def login(self):
         if len(self.redirect_uri) < 4:
-            print('[ERROR] Login failed due to network problem, please try again,')
+            logging.info('[ERROR] Login failed due to network problem, please try again,')
             return False
         r = self.session.get(self.redirect_uri)
         r.encoding = 'utf-8'
@@ -1087,7 +1089,7 @@ class WxApi:
         if '' in (self.skey, self.sid, self.uin, self.pass_ticket):
             return False
         else:
-            print('[INFO] get skey, sid etc succeed.')
+            logging.info('[INFO] get skey, sid etc succeed.')
 
         self.base_request = {
             'Uin': self.uin,
@@ -1131,11 +1133,9 @@ class WxApi:
     def test_sync_check(self):
         for host in ['webpush', 'webpush2']:
             self.sync_host = host
-            retcode = self.sync_check()[0]
-            print('test_sync_check, retcode: {}'.format(retcode))
 
             retcode, selector = self.sync_check()
-            print('{},{}'.format(retcode, selector))
+            logging.info('test_sync_check: {},{}'.format(retcode, selector))
             if retcode == '0':
                 return True
             return False
@@ -1151,8 +1151,7 @@ class WxApi:
             '_': int(time.time()),
         }
         url = 'https://' + self.sync_host + '.wx.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
-        # if self.DEBUG:
-        # print('sync_check url: ' + url)
+        logging.debug('sync_check url: ' + url)
 
         try:
             r = self.session.get(url, timeout=60)
@@ -1162,7 +1161,7 @@ class WxApi:
             retcode = pm.group(1)
             selector = pm.group(2)
 
-            print('sync_check, ret:{} sel:{}'.format(retcode, selector))
+            logging.debug('sync_check, ret:{} sel:{}'.format(retcode, selector))
 
             return [retcode, selector]
         except Exception as e:
@@ -1187,10 +1186,10 @@ class WxApi:
                         [str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
                 return dic
         except Exception as e:
-            traceback.print_exc()
+            traceback.logging.info_exc()
 
         if self.DEBUG:
-            print('[DEBUG] sync check return nothing!')
+            logging.info('[DEBUG] sync check return nothing!')
 
     def get_icon(self, uid, gid=None):
         "获取联系人或群聊成员头像"
@@ -1277,10 +1276,10 @@ class WxApi:
             command = 'open -a /Applications/Previews.app %s &' % quote(QR_CODE_PATH)
             os.system(command)
         elif sys.platform.startswith('Linux'):
-            # print('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
+            # logging.info('Linux or other platform, please download your qrcode img in %s' %QR_CODE_PATH)
             webbrowser.open(os.path.join(os.getcwd(), QR_CODE_PATH))
         else:
-            print('Linux or other platform, please download your qrcode img in %s' % QR_CODE_PATH)
+            logging.info('Linux or other platform, please download your qrcode img in %s' % QR_CODE_PATH)
 
         if QR_CODE_PATH:
             return True
@@ -1311,7 +1310,7 @@ class WxApi:
 
 
 def main():
-    print("do sth")
+    logging.info("do sth")
 
 
 if __name__ == '__main__':
