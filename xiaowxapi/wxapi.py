@@ -61,7 +61,8 @@ class SafeSession(requests.Session):
                                                         timeout, allow_redirects, proxies, hooks, stream, verify, cert,
                                                         json)
             except Exception as e:
-                print(e, traceback.format_exc())
+                traceback.print_stack()
+                time.sleep(5)
                 continue
 
 
