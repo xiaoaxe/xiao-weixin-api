@@ -13,9 +13,8 @@
 @time: 2016/8/28 22:03
 """
 
-
 def main():
-    print("do sth")
+    logging.info("do sth")
 
 
 if __name__ == '__main__':

@@ -25,8 +25,8 @@ class TuringWxBot(WxApi):
         WxApi.__init__(self)
 
         self.turing_key = ""
-        self.robot_switch = False
-        self.close_cnt = 0
+        self.robot_switch = {}
+        self.close_cnt = {}
 
         try:
             cf = ConfigParser()
@@ -34,7 +34,7 @@ class TuringWxBot(WxApi):
             self.turing_key = cf.get('main', 'key')
         except Exception as e:
             pass
-        print('turingRobot key is : ' + self.turing_key)
+        logging.info('turingRobot key is : ' + self.turing_key)
 
     def turing_intelligent_reply(self, uid, msg):
         if self.turing_key:
@@ -54,7 +54,7 @@ class TuringWxBot(WxApi):
                 result = response['url']
             elif response['code'] == 302000:
                 for k in response['list']:
-                    result = result + '[' + k['soruce'] + "]" + k['article'] + '\t' + k['detailurl'] + '\n'
+                    result = result + '[' + k['source'] + "]" + k['article'] + '\t' + k['detailurl'] + '\n'
             else:
                 result = response['text'].replace('<br>', '   ')
 
@@ -65,19 +65,24 @@ class TuringWxBot(WxApi):
 
     def switch_bot(self, msg):
         msg_data = msg['content']['data']
+        uid = msg['user']['id']
         start_cmd = [u'开始']
         stop_cmd = [u'结束']
 
-        if self.robot_switch:
+        # 对于每一个用户，都初始化robot_switch
+        if uid not in self.robot_switch:
+            self.robot_switch[uid] = False
+
+        if self.robot_switch[uid]:
             for i in stop_cmd:
                 if i == msg_data:
-                    self.robot_switch = False
+                    self.robot_switch[uid] = False
                     s = u'[使用"开始"开启] 机器人自动回复已关闭T_T'
                     return s
         else:
             for i in start_cmd:
                 if i == msg_data:
-                    self.robot_switch = True
+                    self.robot_switch[uid] = True
                     s = u'[使用"结束"关闭] 机器人自动回复已开启^_^'
                     return s
 
@@ -96,10 +101,12 @@ class TuringWxBot(WxApi):
         if msg['msg_type_id'] == 4:
             is_person = True
 
+        uid = msg['user']['id']
+
         if not reply:
             if is_person:
-                if not self.robot_switch:
-                    if self.reply_cnt():
+                if not self.robot_switch[uid]:
+                    if self.reply_cnt(uid):
                         reply = '[使用"开始""结束"控制机器人] 机器人已关闭>_<'
                 elif msg['content']['type'] != 0 and is_person:
                     reply = '抱歉，不支持的消息类型'
@@ -131,14 +138,14 @@ class TuringWxBot(WxApi):
                             txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
                         reply = "@{} {}".format(src_name, txt)
 
-        #重置计数
-        if self.robot_switch:
-            self.close_cnt = 0
+        # 重置计数
+        if self.robot_switch[uid]:
+            self.close_cnt[uid] = 0
 
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
-            print('[INFO] user: ' + msg['content']['data'])
-            print('[INFO] robot: ' + reply)
+            logging.info('[INFO] user: ' + msg['content']['data'])
+            logging.info('[INFO] robot: ' + reply)
 
     def schedule(self):
         content = u'我很乖'
@@ -148,27 +155,30 @@ class TuringWxBot(WxApi):
         push = False
         hour = '22'
 
-        if isExactHour(hour):
+        if is_exact_hour(hour):
             push = True
 
         if push:
             if not self.send_msg_by_uid(content, dst=user):
-                print('[ERROR] schedule task exec failed!!!')
+                logging.info('[ERROR] schedule task exec failed!!!')
             time.sleep(60)
 
-    def reply_cnt(self):
-        if self.close_cnt is 42:
-            self.close_cnt = 0
+    def reply_cnt(self, uid):
+        if uid not in self.close_cnt:
+            self.close_cnt[uid] = 0
 
-        if self.close_cnt is 0:
-            self.close_cnt += 1
+        if self.close_cnt[uid] is 42:
+            self.close_cnt[uid] = 0
+
+        if self.close_cnt[uid] is 0:
+            self.close_cnt[uid] += 1
             return True
         else:
-            self.close_cnt += 1
+            self.close_cnt[uid] += 1
             return False
 
 
-def isExactHour(h):
+def is_exact_hour(h):
     time_array = time.localtime(time.time())
     # format_time = time.strftime("%Y-%m-%d %H:%M:%S", time.time())
     hour = time.strftime("%H", time_array)
@@ -182,12 +192,13 @@ def isExactHour(h):
 
 def main():
     bot = TuringWxBot()
-    bot.DEBUG = True
+    # bot.DEBUG = True
     bot.run()
 
 
 def test():
-    print(isExactHour('22'))
+    # logging.info(isExactHour('22'))
+    d = {"1": "2"}
 
 
 if __name__ == '__main__':

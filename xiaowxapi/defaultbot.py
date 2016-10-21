@@ -27,7 +27,7 @@ class DefaultBot(WxApi):
 
     def schedule(self):
         if not self.send_msg(u'小号', u'test msg'):
-            print('[ERROR] schedule task exec failed!!!')
+            logging.info('[ERROR] schedule task exec failed!!!')
         time.sleep(1)
 
 
@@ -42,7 +42,7 @@ def test():
     # url = 'https://login.wx.qq.com/jslogin?appid=wx782c26e4c19acffb&fun=new&lang=zh_CN&_=1475388677149'
     url = 'https://login.weixin.qq.com/qrcode/wfcDA1mk6A=='
     # bot = DefaultBot()
-    print(requests.get(url).text)
+    logging.info(requests.get(url).text)
 
 
 def test2():
@@ -50,10 +50,10 @@ def test2():
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=1rNuNCANQHqPdZqP&skey=@crypt_9db55326_60a2947061ce89b1ba81afc27fbde155&pass_ticket=kacKwq%2B8CoOX6T8KQUGYpGPmYO06gEQBdNXvkn%2Fg54H5NLeM7wFySN3BtNcVPPiJ'
     params = "{'SyncKey': {'List': [{'Val': 640579806, 'Key': 1}, {'Val': 640579965, 'Key': 2}, {'Val': 640579916, 'Key': 3}, {'Val': 1475381161, 'Key': 1000}], 'Count': 4}, 'BaseRequest': {'Skey': '@crypt_9db55326_60a2947061ce89b1ba81afc27fbde155', 'Sid': '1rNuNCANQHqPdZqP', 'DeviceID': 'e451947568286834', 'Uin': 2491682624}, 'rr': 1475402930}"
 
-    # print(requests.post(url,params).text)
+    # logging.info(requests.post(url,params).text)
 
     # url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsync?sid=2xYX22XMjDQi0PC7&skey=@crypt_9db55326_e39450380edc077767efad6fdcb2c391&pass_ticket=DVesc5THA0F0Yb24aKrsElU3g%252FpPm60Hk1HebPqsgzaRm8hdqoMx3M2mA15RoDTq'
-    print(requests.post(url, params).text)
+    logging.info(requests.post(url, params).text)
 
 
 def test3():
