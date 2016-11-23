@@ -15,6 +15,8 @@
 
 from collections import ChainMap
 import re
+import logging
+import urllib3
 
 
 def main1():

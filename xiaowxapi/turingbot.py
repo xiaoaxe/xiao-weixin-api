@@ -36,6 +36,26 @@ class TuringWxBot(WxApi):
             pass
         logging.info('turingRobot key is : ' + self.turing_key)
 
+    def word2vec_reply(self,uid,msg):
+        url = 'http://127.0.0.1:5000/vec'
+
+        body = {
+                'word': msg.encode('utf-8'),
+            }
+        r = requests.post(url, data=body, timeout=10)
+
+        if r.status_code == 200:
+            response = json.loads(r.content.decode('unicode_escape').replace("'",'"'))
+            code = response['code']
+            if code != 0:
+                result = response['msg']
+            else:
+                result = response['vec']
+        else:
+            result = 'sorry, err occurred.'
+
+        return str(result)
+
     def turing_intelligent_reply(self, uid, msg):
         if self.turing_key:
             url = "http://www.tuling123.com/openapi/api"
@@ -109,7 +129,8 @@ class TuringWxBot(WxApi):
                 elif msg['content']['type'] != 0:
                     reply = '抱歉，不支持的消息类型'
                 else:
-                    reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
+                    # reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
+                    reply = self.word2vec_reply(msg['user']['id'], msg['content']['data'])
 
             # 重置计数
             if self.robot_switch[uid]:
