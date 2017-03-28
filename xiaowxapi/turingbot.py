@@ -166,22 +166,9 @@ class TuringWxBot(WxApi):
 
         return None
 
-    def handle_request(self):
-        if not self.next_is_ok:
-            return None
-
-        # 下一条请求
-        content = self.next_line()
-        if content:
-            self.uniq_msg = content
-            self.send_msg(self.to_robot, content)
-            print('request: ', content)
-
-            self.next_is_ok = False
-
     def handle_msg_all(self, msg):
         if self.is_first_request:
-            self.handle_request()
+            self.schedule()
             self.is_first_request = False
             return None
 
@@ -193,39 +180,32 @@ class TuringWxBot(WxApi):
             return None
         elif msg['user']['name'] != self.to_robot:
             return None
-        elif self.uniq_msg != self.lines[self.current_idx-1][1]:
-            return None
         else:
             self.next_is_ok = True
 
         print('response: ', response)
 
         with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
-            fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx-1]), response))
-
-        # 进行下一次请求
-        self.handle_request()
+            fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx - 1]), response))
 
     def next_line(self):
         if self.current_idx < len(self.lines):
-            try:
-                res = self.lines[self.current_idx][1]
-            except:
-                res = ''
+            res = self.lines[self.current_idx][1]
             self.current_idx += 1
             return res
         return None
 
     def schedule(self):
-        # content = "你知道我是谁吗"
-        # # 小冰
-        # user = '小冰'
-        # flag = self.send_msg(user, content)
-        # # print('send flag: ', flag)
-        # print('request: ', content)
-        # time.sleep(1)
+        if not self.next_is_ok:
+            return None
 
-        pass
+        # 下一条请求
+        content = self.next_line()
+        if content:
+            self.send_msg(self.to_robot, content)
+            print('request: ', content)
+
+            self.next_is_ok = False
 
     def handle_msg_all_1(self, msg):
         reply = ''

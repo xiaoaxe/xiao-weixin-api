@@ -544,6 +544,7 @@ class WxApi:
         6: special
         99: unknown
         """
+
         for msg in r['AddMsgList']:
             user = {'id': msg['FromUserName'], 'name': 'unknown'}
             if msg['MsgType'] == 51:  # init msg
@@ -646,7 +647,7 @@ class WxApi:
                     if self.DEBUG:
                         logging.info(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
 
-                # self.schedule()
+                self.schedule()
             except Exception as e:
                 logging.info('---> {ERROR] Except in proc_msg')
                 logging.info(format_exc())
