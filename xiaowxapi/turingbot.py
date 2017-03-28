@@ -185,7 +185,7 @@ class TuringWxBot(WxApi):
 
         print('response: ', response)
 
-        with open('{}\\output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
+        with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
             if self.uniq_msg == self.lines[self.current_idx][1]:
                 fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx]), response))
 
