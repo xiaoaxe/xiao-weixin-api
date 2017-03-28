@@ -646,7 +646,7 @@ class WxApi:
                     if self.DEBUG:
                         logging.info(u'--->sync_check: retcode: [{}]; selector: [{}].'.format(retcode, selector))
 
-                self.schedule()
+                # self.schedule()
             except Exception as e:
                 logging.info('---> {ERROR] Except in proc_msg')
                 logging.info(format_exc())
@@ -914,6 +914,8 @@ class WxApi:
         return ''
 
     def send_msg(self, name, word, isfile=False):
+        self.uniq_msg = word
+
         uid = self.get_user_id(name)
         if uid:
             if isfile:

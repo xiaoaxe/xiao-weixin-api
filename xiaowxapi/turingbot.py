@@ -175,6 +175,8 @@ class TuringWxBot(WxApi):
         response = msg['content']['data']
         if not response:
             return None
+        elif msg['user']['name'] != self.to_robot:
+            return None
         else:
             # time.sleep(3)
             pass
@@ -182,11 +184,13 @@ class TuringWxBot(WxApi):
         print('response: ', response)
 
         with open('{}\\output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
-            fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx]), response))
+            if self.uniq_msg == self.lines[self.current_idx][1]:
+                fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx]), response))
 
         # 下一条请求
         content = self.next_line()
         if content:
+            self.uniq_msg = content
             self.send_msg(self.to_robot, content)
             print('request: ', content)
 
