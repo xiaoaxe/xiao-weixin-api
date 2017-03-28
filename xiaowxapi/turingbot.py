@@ -189,7 +189,7 @@ class TuringWxBot(WxApi):
 
         if '你说的太快了' in response and '把人家都说头晕' in response:
             # time.sleep(random.uniform(0.4, 1.2))
-            time.sleep(5 * 60)
+            time.sleep(60)
 
         print('response: ', response)
 
@@ -221,7 +221,7 @@ class TuringWxBot(WxApi):
             self.fail_cnt = 0
 
         # 睡一秒
-        time.sleep(random.uniform(0.4, 1.2))
+        time.sleep(random.uniform(3, 5))
 
     def handle_msg_all_1(self, msg):
         reply = ''
