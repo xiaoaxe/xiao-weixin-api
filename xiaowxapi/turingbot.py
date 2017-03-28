@@ -177,6 +177,9 @@ class TuringWxBot(WxApi):
         # 如果不是上次发送的信息，也不记录
         response = msg['content']['data']
 
+        if 'wx.qq.com' in response:
+            return None
+
         if not response:
             return None
         elif msg['user']['name'] != self.to_robot:
@@ -184,10 +187,11 @@ class TuringWxBot(WxApi):
         else:
             self.next_is_ok = True
 
-        print('response: ', response)
-
         if '你说的太快了' in response and '把人家都说头晕' in response:
-            time.sleep(random.uniform(0.4, 1.2))
+            # time.sleep(random.uniform(0.4, 1.2))
+            time.sleep(5 * 60)
+
+        print('response: ', response)
 
         with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
             fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx - 1]), response))
@@ -216,6 +220,8 @@ class TuringWxBot(WxApi):
             self.next_is_ok = False
             self.fail_cnt = 0
 
+        # 睡一秒
+        time.sleep(random.uniform(0.4, 1.2))
 
     def handle_msg_all_1(self, msg):
         reply = ''
