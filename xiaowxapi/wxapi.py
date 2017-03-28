@@ -903,6 +903,14 @@ class WxApi:
             elif 'DisplayName' in group and group['DisplayName'] == name:
                 return group['UserName']
 
+        for public in self.public_list:
+            if 'RemarkName' in public and public['RemarkName'] == name:
+                return public['UserName']
+            elif 'NickName' in public and public['NickName'] == name:
+                return public['UserName']
+            elif 'DisplayName' in public and public['DisplayName'] == name:
+                return public['UserName']
+
         return ''
 
     def send_msg(self, name, word, isfile=False):

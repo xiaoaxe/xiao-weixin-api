@@ -19,6 +19,8 @@ from xiaowxapi.wxapi import *
 from configparser import ConfigParser
 import json
 
+from xiaowxapi.pth import FILE_PATH
+
 
 class TuringWxBot(WxApi):
     def __init__(self):
@@ -28,6 +30,15 @@ class TuringWxBot(WxApi):
         self.robot_switch = {}
         self.close_cnt = {}
 
+        with open('{}/input.txt'.format(FILE_PATH), 'r', encoding='utf-8') as f:
+            self.lines = f.readlines()
+            self.lines = [line.strip().split('\t') for line in self.lines]
+            self.current_idx = 0
+
+            # self.to_robot = '小冰'
+            self.to_robot = '小影机器人'
+            self.first_request = True
+
         try:
             cf = ConfigParser()
             cf.read("conf/turing.cfg")
@@ -35,6 +46,28 @@ class TuringWxBot(WxApi):
         except Exception as e:
             pass
         logging.info('turingRobot key is : ' + self.turing_key)
+
+    def interests_reply(self, uid, msg):
+        url = 'http://127.0.0.1:5000/interests'
+
+        body = {
+            'word': msg.encode('utf-8'),
+        }
+
+        result = ''
+
+        try:
+            r = requests.post(url, data=body, timeout=10)
+
+            if r.status_code == 200:
+                json_data = json.loads(r.content.decode('unicode_escape'))
+                data = json_data['data']
+                if data:
+                    result = '你喜欢:{{{}}}，为您推荐：{}'.format(msg, data)
+        except Exception as e:
+            traceback.print_exc()
+
+        return str(result)
 
     # 推荐关键词列表
     def recommend_reply(self, uid, msg):
@@ -133,6 +166,87 @@ class TuringWxBot(WxApi):
         return None
 
     def handle_msg_all(self, msg):
+        if self.first_request:
+            self.send_msg(self.to_robot, 'start')
+            self.first_request = False
+            return None
+
+        # 如果没有返回信息，那么现在就继续
+        response = msg['content']['data']
+        if not response:
+            return None
+        else:
+            # time.sleep(3)
+            pass
+
+        print('response: ', response)
+
+        with open('{}\\output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
+            fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx]), response))
+
+        # 下一条请求
+        content = self.next_line()
+        if content:
+            self.send_msg(self.to_robot, content)
+            print('request: ', content)
+
+    def next_line(self):
+        if self.current_idx < len(self.lines):
+            res = self.lines[self.current_idx][1]
+            self.current_idx += 1
+            return res
+        return None
+
+    def schedule(self):
+        # content = "你知道我是谁吗"
+        # # 小冰
+        # user = '小冰'
+        # flag = self.send_msg(user, content)
+        # # print('send flag: ', flag)
+        # print('request: ', content)
+        # time.sleep(1)
+
+        pass
+
+    def handle_msg_all_1(self, msg):
+        reply = ''
+
+        if msg['msg_type_id'] == 4:
+            # reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
+            # reply = self.word2vec_reply(msg['user']['id'], msg['content']['data'])
+            # reply = self.recommend_reply(msg['user']['id'], msg['content']['data'])
+            reply = self.interests_reply(msg['user']['id'], msg['content']['data'])
+
+        elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group msg
+            if 'detail' in msg['content']:
+                my_names = self.get_group_member_name(self.my_account['UserName'], msg['user']['id'])
+                if my_names is None:
+                    my_names = {}
+                if 'NickName' in self.my_account and self.my_account['NickName']:
+                    my_names['nickname2'] = self.my_account['NickName']
+                if 'RemarkName' in self.my_account and self.my_account['RemarkName']:
+                    my_names['remarkname2'] = self.my_account['RemarkName']
+                is_at_me = False
+                for detail in msg['content']['detail']:
+                    if detail['type'] == 'at':
+                        for k in my_names:
+                            if my_names[k] and my_names[k] == detail['value']:
+                                is_at_me = True
+                                break
+                if is_at_me:
+                    src_name = msg['content']['user']['name']
+                    txt = '抱歉，不支持的消息类型'
+                    if msg['content']['type'] == 0:
+                        txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
+                    reply = "@{} {}".format(src_name, txt)
+
+        logging.info('[INFO] user: ' + msg['content']['data'])
+        logging.info('[INFO] robot: ' + reply)
+
+        if reply:
+            self.send_msg_by_uid(reply, msg['user']['id'])
+
+    def handle_msg_all_2(self, msg):
         # 回复自己
         # if msg['msg_type_id'] == 4 and msg['content']['type']==0:
         #     self.switch_bot(msg)
@@ -189,7 +303,7 @@ class TuringWxBot(WxApi):
             logging.info('[INFO] user: ' + msg['content']['data'])
             logging.info('[INFO] robot: ' + reply)
 
-    def schedule(self):
+    def schedule_1(self):
         content = u'我很乖'
 
         user = u'小号'
