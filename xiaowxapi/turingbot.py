@@ -39,6 +39,7 @@ class TuringWxBot(WxApi):
             self.to_robot = '小影机器人'
             self.next_is_ok = True
             self.is_first_request = True
+            self.fail_cnt = 0
 
         try:
             cf = ConfigParser()
@@ -196,7 +197,11 @@ class TuringWxBot(WxApi):
         return None
 
     def schedule(self):
+        if self.fail_cnt >= 5:
+            self.next_is_ok = True
+
         if not self.next_is_ok:
+            self.fail_cnt += 1
             return None
 
         # 下一条请求
