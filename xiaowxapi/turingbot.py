@@ -35,8 +35,8 @@ class TuringWxBot(WxApi):
             self.lines = [line.strip().split('\t') for line in self.lines]
             self.current_idx = 0
 
-            # self.to_robot = '小冰'
-            self.to_robot = '小影机器人'
+            self.to_robot = '小冰'
+            # self.to_robot = '小影机器人'
             self.next_is_ok = True
             self.is_first_request = True
             self.fail_cnt = 0
