@@ -186,6 +186,9 @@ class TuringWxBot(WxApi):
 
         print('response: ', response)
 
+        if '你说的太快了' in response and '把人家都说头晕' in response:
+            time.sleep(random.uniform(0.4, 1.2))
+
         with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
             fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx - 1]), response))
 
@@ -212,6 +215,7 @@ class TuringWxBot(WxApi):
 
             self.next_is_ok = False
             self.fail_cnt = 0
+
 
     def handle_msg_all_1(self, msg):
         reply = ''
