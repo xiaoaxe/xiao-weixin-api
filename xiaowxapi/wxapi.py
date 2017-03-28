@@ -914,8 +914,6 @@ class WxApi:
         return ''
 
     def send_msg(self, name, word, isfile=False):
-        self.uniq_msg = word
-
         uid = self.get_user_id(name)
         if uid:
             if isfile:

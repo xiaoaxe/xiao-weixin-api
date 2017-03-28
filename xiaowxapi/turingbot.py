@@ -37,7 +37,8 @@ class TuringWxBot(WxApi):
 
             # self.to_robot = '小冰'
             self.to_robot = '小影机器人'
-            self.first_request = True
+            self.next_is_ok = True
+            self.is_first_request = True
 
         try:
             cf = ConfigParser()
@@ -165,29 +166,9 @@ class TuringWxBot(WxApi):
 
         return None
 
-    def handle_msg_all(self, msg):
-        if self.first_request:
-            self.send_msg(self.to_robot, 'start')
-            self.first_request = False
+    def handle_request(self):
+        if not self.next_is_ok:
             return None
-
-        # 如果没有返回信息，那么现在就继续
-        response = msg['content']['data']
-        if not response:
-            return None
-        elif msg['user']['name'] != self.to_robot:
-            return None
-        elif self.uniq_msg != self.lines[self.current_idx][1]:
-            return None
-        else:
-            # time.sleep(3)
-            pass
-
-        print('response: ', response)
-
-        with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
-            if self.uniq_msg == self.lines[self.current_idx][1]:
-                fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx]), response))
 
         # 下一条请求
         content = self.next_line()
@@ -196,9 +177,41 @@ class TuringWxBot(WxApi):
             self.send_msg(self.to_robot, content)
             print('request: ', content)
 
+            self.next_is_ok = False
+
+    def handle_msg_all(self, msg):
+        if self.is_first_request:
+            self.handle_request()
+            self.is_first_request = False
+            return None
+
+        # 如果没有返回信息，那么现在就继续
+        # 如果不是上次发送的信息，也不记录
+        response = msg['content']['data']
+
+        if not response:
+            return None
+        elif msg['user']['name'] != self.to_robot:
+            return None
+        elif self.uniq_msg != self.lines[self.current_idx-1][1]:
+            return None
+        else:
+            self.next_is_ok = True
+
+        print('response: ', response)
+
+        with open('{}/output.txt'.format(FILE_PATH), 'a', encoding='utf-8') as fw:
+            fw.write('{}\t{}\n'.format('\t'.join(self.lines[self.current_idx-1]), response))
+
+        # 进行下一次请求
+        self.handle_request()
+
     def next_line(self):
         if self.current_idx < len(self.lines):
-            res = self.lines[self.current_idx][1]
+            try:
+                res = self.lines[self.current_idx][1]
+            except:
+                res = ''
             self.current_idx += 1
             return res
         return None
