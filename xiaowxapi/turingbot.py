@@ -211,6 +211,7 @@ class TuringWxBot(WxApi):
             print('request: ', content)
 
             self.next_is_ok = False
+            self.fail_cnt = 0
 
     def handle_msg_all_1(self, msg):
         reply = ''
