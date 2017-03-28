@@ -177,6 +177,8 @@ class TuringWxBot(WxApi):
             return None
         elif msg['user']['name'] != self.to_robot:
             return None
+        elif self.uniq_msg != self.lines[self.current_idx][1]:
+            return None
         else:
             # time.sleep(3)
             pass
