@@ -35,8 +35,8 @@ class TuringWxBot(WxApi):
             self.lines = [line.strip().split('\t') for line in self.lines]
             self.current_idx = 0
 
-            self.to_robot = '小冰'
-            # self.to_robot = '小影机器人'
+            # self.to_robot = '小冰'
+            self.to_robot = '小影机器人'
             self.next_is_ok = True
             self.is_first_request = True
             self.fail_cnt = 0
@@ -221,7 +221,8 @@ class TuringWxBot(WxApi):
             self.fail_cnt = 0
 
         # 睡一秒
-        time.sleep(random.uniform(3, 5))
+        # time.sleep(random.uniform(3, 5))
+        time.sleep(random.uniform(1.5, 2.5))
 
     def handle_msg_all_1(self, msg):
         reply = ''
