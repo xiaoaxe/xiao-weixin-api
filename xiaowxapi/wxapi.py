@@ -1197,7 +1197,7 @@ class WxApi:
                         [str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
                 return dic
         except Exception as e:
-            traceback.logging.info_exc()
+            traceback.print_exc()
 
         if self.DEBUG:
             logging.info('[DEBUG] sync check return nothing!')

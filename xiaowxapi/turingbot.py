@@ -167,7 +167,7 @@ class TuringWxBot(WxApi):
 
         return None
 
-    def handle_msg_all(self, msg):
+    def handle_msg_all_1(self, msg):
         if self.is_first_request:
             self.schedule()
             self.is_first_request = False
@@ -203,7 +203,7 @@ class TuringWxBot(WxApi):
             return res
         return None
 
-    def schedule(self):
+    def schedule_1(self):
         if self.fail_cnt >= 5:
             self.next_is_ok = True
 
@@ -224,7 +224,7 @@ class TuringWxBot(WxApi):
         # time.sleep(random.uniform(3, 5))
         time.sleep(random.uniform(1.5, 2.5))
 
-    def handle_msg_all_1(self, msg):
+    def handle_msg_all(self, msg):
         reply = ''
 
         if msg['msg_type_id'] == 4:

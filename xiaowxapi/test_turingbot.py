@@ -10,7 +10,7 @@
 @contact: mailbaoqiang@gmail.com
 @site: http://www.github.com/githubao
 @software: PyCharm
-@file: unittest_turingbot.py
+@file: test_turingbot.py
 @time: 2017/2/19 11:03
 """
 
