@@ -50,7 +50,7 @@ class TuringWxBot(WxApi):
         logging.info('turingRobot key is : ' + self.turing_key)
 
     def interests_reply(self, uid, msg):
-        url = 'http://127.0.0.1:5000/interests'
+        url = 'http://127.0.0.1:5000/interests?word={}'.format(msg)
 
         body = {
             'word': msg.encode('utf-8'),
@@ -228,10 +228,10 @@ class TuringWxBot(WxApi):
         reply = ''
 
         if msg['msg_type_id'] == 4:
-            # reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
+            reply = self.turing_intelligent_reply(msg['user']['id'], msg['content']['data'])
             # reply = self.word2vec_reply(msg['user']['id'], msg['content']['data'])
             # reply = self.recommend_reply(msg['user']['id'], msg['content']['data'])
-            reply = self.interests_reply(msg['user']['id'], msg['content']['data'])
+            # reply = self.interests_reply(msg['user']['id'], msg['content']['data'])
 
         elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group msg
             if 'detail' in msg['content']:
@@ -256,8 +256,8 @@ class TuringWxBot(WxApi):
                         txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
                     reply = "@{} {}".format(src_name, txt)
 
-        logging.info('[INFO] user: ' + msg['content']['data'])
-        logging.info('[INFO] robot: ' + reply)
+        logging.info('[INFO] user: {}'.format(msg['content']['data']))
+        logging.info('[INFO] robot: {}'.format(reply))
 
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
@@ -319,7 +319,7 @@ class TuringWxBot(WxApi):
             logging.info('[INFO] user: ' + msg['content']['data'])
             logging.info('[INFO] robot: ' + reply)
 
-    def schedule_1(self):
+    def schedule_2(self):
         content = u'我很乖'
 
         user = u'小号'
@@ -368,7 +368,7 @@ def main():
     bot.run()
 
 
-def test():
+def a_test():
     # logging.info(isExactHour('22'))
     d = {"1": "2"}
 

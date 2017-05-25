@@ -581,7 +581,8 @@ class WxApi:
             else:
                 msg_type_id = 99
                 user['name'] = 'unknown'
-            user['name'] = html.unescape(user['name'])
+            if user['name']:
+                user['name'] = html.unescape(user['name'])
 
             if self.DEBUG and msg_type_id != 0:
                 logging.info(u'---> [Msg] %s' % user['name'])
