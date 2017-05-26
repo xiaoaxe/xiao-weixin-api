@@ -55,7 +55,7 @@ class SafeSession(requests.Session):
                 proxies=None,
                 hooks=None,
                 stream=None,
-                verify=None,
+                verify=False,
                 cert=None,
                 json=None):
         for i in range(3):
@@ -195,7 +195,7 @@ class WxApi:
             'List': [{'UserName': group['UserName'], 'EncryChatRoomId': ''} for group in self.group_list]
         }
 
-        r = self.session.post(url, data=json.dumps(params))
+        r = self.session.post(url, data=json.dumps(params),verify=False)
         r.encoding = 'utf-8'
         dic = json.loads(r.text)
         group_members = {}
