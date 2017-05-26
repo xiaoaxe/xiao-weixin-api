@@ -26,7 +26,6 @@ import xml.dom.minidom
 from traceback import format_exc
 from urllib import parse
 import webbrowser
-import logging
 
 import requests
 import yattag
@@ -35,7 +34,7 @@ from requests.exceptions import ConnectionError, ReadTimeout
 import codecs
 from pipes import quote
 
-logging.basicConfig(level=logging.INFO)
+from xiaowxapi.pth import logging
 
 UNKNOWN = 'unknown'
 SUCCESS = '200'
@@ -65,8 +64,8 @@ class SafeSession(requests.Session):
                                                         timeout, allow_redirects, proxies, hooks, stream, verify, cert,
                                                         json)
             except Exception as e:
-                traceback.print_stack()
-                time.sleep(60)
+                traceback.print_exc()
+                # time.sleep(60)
                 continue
 
 

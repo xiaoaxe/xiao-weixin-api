@@ -256,8 +256,9 @@ class TuringWxBot(WxApi):
                         txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
                     reply = "@{} {}".format(src_name, txt)
 
-        logging.info('[INFO] user: {}'.format(msg['content']['data']))
-        logging.info('[INFO] robot: {}'.format(reply))
+        if msg['content']['data']:
+            logging.info('[INFO] user: {}'.format(msg['content']['data']))
+            logging.info('[INFO] robot: {}'.format(reply))
 
         if reply:
             self.send_msg_by_uid(reply, msg['user']['id'])
