@@ -26,7 +26,7 @@ class DefaultBot(WxApi):
             self.send_file_msg_by_uid('file/1.txt', msg['user']['id'])
 
     def schedule(self):
-        if not self.send_msg(u'小号', u'test msg'):
+        if not self.send_msg(u'test msg',u'小号'):
             logging.info('[ERROR] schedule task exec failed!!!')
         time.sleep(1)
 

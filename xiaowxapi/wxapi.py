@@ -13,6 +13,7 @@
 @time: 2016/8/28 22:04
 """
 
+import codecs
 import html
 import json
 import mimetypes
@@ -22,17 +23,16 @@ import re
 import sys
 import time
 import traceback
+import webbrowser
 import xml.dom.minidom
+from pipes import quote
 from traceback import format_exc
 from urllib import parse
-import webbrowser
 
 import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import yattag
 from requests.exceptions import ConnectionError, ReadTimeout
-
-import codecs
-from pipes import quote
 
 from xiaowxapi.pth import logging
 
@@ -40,6 +40,8 @@ UNKNOWN = 'unknown'
 SUCCESS = '200'
 SCANED = '201'
 TIMEOUT = '408'
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
 class SafeSession(requests.Session):
@@ -94,7 +96,7 @@ class WxApi:
         # self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36'})
         # self.session.headers.update({'User-Agent': 'Mozilla/5.0 (Linux; U; Android 4.1.2; zh-cn; GT-I9300 Build/JZO54K) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30 MicroMessenger/5.2.380'})
         self.session.headers.update(
-                {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0'})
+            {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:47.0) Gecko/20100101 Firefox/47.0'})
         self.conf = {'qr': 'png'}
 
         self.my_account = {}
@@ -172,19 +174,19 @@ class WxApi:
 
         if self.DEBUG:
             with open(os.path.join(self.temp_pwd, 'contact_list.json'), 'w') as f:
-                f.write(json.dumps(self.contact_list))
+                f.write(json.dumps(self.contact_list,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'special_list.json'), 'w') as f:
-                f.write(json.dumps(self.special_list))
+                f.write(json.dumps(self.special_list,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'group_list.json'), 'w') as f:
-                f.write(json.dumps(self.group_list))
+                f.write(json.dumps(self.group_list,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'public_list.json'), 'w') as f:
-                f.write(json.dumps(self.public_list))
+                f.write(json.dumps(self.public_list,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'member_list.json'), 'w') as f:
-                f.write(json.dumps(self.member_list))
+                f.write(json.dumps(self.member_list,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'group_members.json'), 'w') as f:
-                f.write(json.dumps(self.group_members))
+                f.write(json.dumps(self.group_members,ensure_ascii=False))
             with open(os.path.join(self.temp_pwd, 'account_info.json'), 'w') as f:
-                f.write(json.dumps(self.account_info))
+                f.write(json.dumps(self.account_info,ensure_ascii=False))
         return True
 
     def batch_get_group_members(self):
@@ -195,7 +197,7 @@ class WxApi:
             'List': [{'UserName': group['UserName'], 'EncryChatRoomId': ''} for group in self.group_list]
         }
 
-        r = self.session.post(url, data=json.dumps(params),verify=False)
+        r = self.session.post(url, data=json.dumps(params), verify=False)
         r.encoding = 'utf-8'
         dic = json.loads(r.text)
         group_members = {}
@@ -774,7 +776,9 @@ class WxApi:
         data = json.dumps(params, ensure_ascii=False).encode('utf-8')
         try:
             r = self.session.post(url, headers=headers, data=data)
-        except (ConnectionError, ReadTimeout):
+        except (ConnectionError, ReadTimeout) as e:
+            logging.error(e)
+            traceback.print_exc()
             return False
         dic = r.json()
         return dic['BaseResponse']['Ret'] == 0
@@ -795,14 +799,14 @@ class WxApi:
             'size': (None, flen),
             'mediatype': (None, 'pic' if is_img else 'doc'),
             'uploadmediarequest': (None, json.dumps(
-                    {
-                        'BaseRequest': self.base_request,
-                        'ClientMediaId': int(time.time()),
-                        'TotalLen': flen,
-                        'StartPos': 0,
-                        'DataLen': flen,
-                        'MediaType': 4,
-                    }
+                {
+                    'BaseRequest': self.base_request,
+                    'ClientMediaId': int(time.time()),
+                    'TotalLen': flen,
+                    'StartPos': 0,
+                    'DataLen': flen,
+                    'MediaType': 4,
+                }
             )),
             'webwx_data_ticket': (None, self.session.cookies['webwx_data_ticket']),
             'pass_ticket': (None, self.pass_ticket),
@@ -912,9 +916,9 @@ class WxApi:
             elif 'DisplayName' in public and public['DisplayName'] == name:
                 return public['UserName']
 
-        return ''
+        return name
 
-    def send_msg(self, name, word, isfile=False):
+    def send_msg(self, word,name, isfile=False):
         uid = self.get_user_id(name)
         if uid:
             if isfile:
@@ -1194,7 +1198,7 @@ class WxApi:
             if dic['BaseResponse']['Ret'] == 0:
                 self.sync_key = dic['SyncKey']
                 self.sync_key_str = '|'.join(
-                        [str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
+                    [str(keyVal['Key']) + '_' + str(keyVal['Val']) for keyVal in self.sync_key['List']])
                 return dic
         except Exception as e:
             traceback.print_exc()
