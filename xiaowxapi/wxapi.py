@@ -1145,14 +1145,15 @@ class WxApi:
         return dic['BaseResponse']['Ret'] == 0
 
     def test_sync_check(self):
-        for host in ['webpush', 'webpush2']:
+        for host in ['webpush.wx','webpush.wx2', 'webpush2.wx', 'webpush2.wx2']:
             self.sync_host = host
 
             retcode, selector = self.sync_check()
             logging.info('test_sync_check: {},{}'.format(retcode, selector))
             if retcode == '0':
                 return True
-            return False
+
+        return False
 
     def sync_check(self):
         params = {
@@ -1164,8 +1165,7 @@ class WxApi:
             'synckey': self.sync_key_str,
             '_': int(time.time()),
         }
-        url = 'https://' + self.sync_host + '.wx.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
-        # url = 'https://' + self.sync_host + '.wx2.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
+        url = 'https://' + self.sync_host + '.qq.com/cgi-bin/mmwebwx-bin/synccheck?' + parse.urlencode(params)
         logging.debug('sync_check url: ' + url)
 
         try:

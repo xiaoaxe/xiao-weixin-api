@@ -15,11 +15,11 @@
 @time: 2016/10/2 13:06
 """
 
-from xiaowxapi.wxapi import *
-from configparser import ConfigParser
 import json
+import random
+from configparser import ConfigParser
 
-from xiaowxapi.pth import FILE_PATH
+from xiaowxapi.wxapi import *
 
 
 class TuringWxBot(WxApi):
@@ -29,6 +29,11 @@ class TuringWxBot(WxApi):
         self.turing_key = ""
         self.robot_switch = {}
         self.close_cnt = {}
+        self.push_cnt = 0
+
+        self.content = ['想你了', '么么哒', '喂狗粮']
+
+        self.push_repeat = 1
 
         try:
             cf = ConfigParser()
@@ -181,6 +186,40 @@ class TuringWxBot(WxApi):
         return None
 
     def handle_msg_all(self, msg):
+        reply = ''
+
+        if msg['msg_type_id'] == 4:
+            reply = random.sample(self.content, 1)[0]
+
+        elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group msg
+            if 'detail' in msg['content']:
+                my_names = self.get_group_member_name(self.my_account['UserName'], msg['user']['id'])
+                if my_names is None:
+                    my_names = {}
+                if 'NickName' in self.my_account and self.my_account['NickName']:
+                    my_names['nickname2'] = self.my_account['NickName']
+                if 'RemarkName' in self.my_account and self.my_account['RemarkName']:
+                    my_names['remarkname2'] = self.my_account['RemarkName']
+                is_at_me = False
+                for detail in msg['content']['detail']:
+                    if detail['type'] == 'at':
+                        for k in my_names:
+                            if my_names[k] and my_names[k] == detail['value']:
+                                is_at_me = True
+                                break
+                if is_at_me:
+                    src_name = msg['content']['user']['name']
+                    txt = '抱歉，不支持的消息类型'
+                    if msg['content']['type'] == 0:
+                        txt = self.turing_intelligent_reply(msg['content']['user']['id'], msg['content']['desc'])
+                    reply = "@{} {}".format(src_name, txt)
+
+        if reply:
+            self.send_msg_by_uid(reply, msg['user']['id'])
+            logging.info('[INFO] user: ' + msg['content']['data'])
+            logging.info('[INFO] robot: ' + reply)
+
+    def handle_msg_all_1(self, msg):
         # 回复自己
         # if msg['msg_type_id'] == 4 and msg['content']['type']==0:
         #     self.switch_bot(msg)
@@ -245,17 +284,28 @@ class TuringWxBot(WxApi):
         content = u'喂狗粮'
         user = u'韩伟'
 
-        if is_push():
+        if self.is_push():
             if not self.send_msg(user, content):
                 logging.info('[ERROR] schedule task exec failed!!!')
 
-    def schedule(self):
-        content = u'喂狗粮'
-
-        if is_push():
+    def schedule_3(self):
+        if self.is_push():
             for item in self.member_list:
-                if not self.send_msg_by_uid(content, dst=item['UserName']):
+                if not self.send_msg_by_uid(self.content[(self.push_cnt - 1) % 3], dst=item['UserName']):
                     logging.info('[ERROR] schedule task exec failed, send to {} err'.format(item['NickName']))
+
+        time.sleep(3)
+
+    def schedule_2(self):
+        content = ['想你了', '么么哒', '喂狗粮']
+
+        if self.is_push():
+            # for item in ['小号']:
+            for item in ['韩伟']:
+                if not self.send_msg(content[(self.push_cnt - 1) % 3], item):
+                    logging.info('[ERROR] schedule task exec failed, send to {} err'.format(item))
+
+        time.sleep(3)
 
     def reply_cnt(self, uid):
         if uid not in self.close_cnt:
@@ -271,21 +321,14 @@ class TuringWxBot(WxApi):
             self.close_cnt[uid] += 1
             return False
 
+    def is_push_1(self):
+        return False
 
-push_cnt = 0
-
-
-def is_push_1():
-    return False
-
-
-def is_push():
-    global push_cnt
-
-    if push_cnt < 3:
-        push_cnt += 1
-        return True
-    return False
+    def is_push(self):
+        if self.push_cnt < 3 * self.push_repeat:
+            self.push_cnt += 1
+            return True
+        return False
 
 
 def main():
