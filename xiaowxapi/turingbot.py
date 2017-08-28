@@ -185,7 +185,7 @@ class TuringWxBot(WxApi):
 
         return None
 
-    def handle_msg_all(self, msg):
+    def handle_msg_all_2(self, msg):
         reply = ''
 
         if msg['msg_type_id'] == 4:
@@ -288,7 +288,7 @@ class TuringWxBot(WxApi):
             if not self.send_msg(user, content):
                 logging.info('[ERROR] schedule task exec failed!!!')
 
-    def schedule(self):
+    def schedule_3(self):
         if self.is_push():
             for item in self.member_list:
                 if not self.send_msg_by_uid(self.content[(self.push_cnt - 1) % 3], dst=item['UserName']):
@@ -304,6 +304,16 @@ class TuringWxBot(WxApi):
             for item in ['韩伟']:
                 if not self.send_msg(content[(self.push_cnt - 1) % 3], item):
                     logging.info('[ERROR] schedule task exec failed, send to {} err'.format(item))
+
+        time.sleep(3)
+
+    def schedule(self):
+        content = '嗨，{}。我们家里的猕猴桃熟了，前两年吃过的都知道，真的很甜。跟之前一样的价格，1箱10斤100元，有40个左右。家里都是周五直接去果园摘的，然后周六发客运汽车，下周一你们就可以吃到又新鲜又甘甜的猕猴桃了。有想要的，快点预定，麻烦一定要跟我说一下，我才好统计数量。不在北京需要邮寄的私聊，而且白天可能没有时间回复，见谅。(此条消息由Python程序自动发出，如有打扰，你也拿我没办法呢[捂脸])'
+
+        if self.is_push():
+            for item in self.member_list:
+                if not self.send_msg_by_uid(content.format(item['NickName']), dst=item['UserName']):
+                    logging.info('[ERROR] schedule task exec failed, send to {} err'.format(item['NickName']))
 
         time.sleep(3)
 
@@ -324,12 +334,17 @@ class TuringWxBot(WxApi):
     def is_push_1(self):
         return False
 
-    def is_push(self):
+    def is_push_2(self):
         if self.push_cnt < 3 * self.push_repeat:
             self.push_cnt += 1
             return True
         return False
 
+    def is_push(self):
+        if self.push_cnt < 1:
+            self.push_cnt += 1
+            return True
+        return False
 
 def main():
     bot = TuringWxBot()
