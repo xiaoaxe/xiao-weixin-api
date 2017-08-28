@@ -288,7 +288,7 @@ class TuringWxBot(WxApi):
             if not self.send_msg(user, content):
                 logging.info('[ERROR] schedule task exec failed!!!')
 
-    def schedule_3(self):
+    def schedule(self):
         if self.is_push():
             for item in self.member_list:
                 if not self.send_msg_by_uid(self.content[(self.push_cnt - 1) % 3], dst=item['UserName']):
