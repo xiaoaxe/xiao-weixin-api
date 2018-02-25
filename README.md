@@ -1,4 +1,7 @@
 i am learning with the help of liuwons's' wxBot
+```angular2html
+https://github.com/liuwons/wxBot
+```
 
 #### 群消息
 - 文本

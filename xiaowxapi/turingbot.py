@@ -224,7 +224,6 @@ class TuringWxBot(WxApi):
         # if msg['msg_type_id'] == 4 and msg['content']['type']==0:
         #     self.switch_bot(msg)
 
-
         # if msg['msg_type_id'] == 4 and msg['content']['type'] == 0:
 
         uid = msg['user']['id']
@@ -277,16 +276,37 @@ class TuringWxBot(WxApi):
             logging.info('[INFO] user: ' + msg['content']['data'])
             logging.info('[INFO] robot: ' + reply)
 
-    def schedule_1(self):
+    def schedule(self):
         # content = u'我很乖'
         # user = u'小号'
 
-        content = u'喂狗粮'
-        user = u'韩伟'
+        # content = u'嗨，{}。祝2018年新年快乐，家庭和睦，事业旺旺。万事如意，心想事成，新春吉祥。小包给您拜年啦啦啦~~~'
 
-        if self.is_push():
-            if not self.send_msg(user, content):
-                logging.info('[ERROR] schedule task exec failed!!!')
+        content = '嗨，{}，祝你2018年新年快乐，新春吉祥，在追求梦想的路上，一路旺到底！[小狗][小狗][小狗]\n' \
+                    '----王泳钰来自呼伦贝尔的祝福'
+
+        users = [u'游泳小分队', u'小号']
+
+        print(len(self.contact_list))
+
+        for user in self.contact_list:
+            name = user['RemarkName']
+
+            # print(user)
+
+            # if name != '小包总':
+            #     continue
+
+            print(name)
+
+            if not self.send_msg(content.format(name), name):
+                logging.info('[ERROR] {} failed!!!'.format(name))
+            time.sleep(random.random() * 3)
+
+        # 结束
+        print('schedule end')
+
+        sys.exit(-1)
 
     def schedule_3(self):
         if self.is_push():
@@ -348,7 +368,7 @@ class TuringWxBot(WxApi):
 
 def main():
     bot = TuringWxBot()
-    # bot.DEBUG = True
+    bot.DEBUG = True
     bot.run()
 
 

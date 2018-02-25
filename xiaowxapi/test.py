@@ -13,6 +13,7 @@
 @time: 2016/8/28 22:04
 """
 
+import json
 from collections import ChainMap
 import re
 import logging
@@ -23,6 +24,30 @@ import random
 
 
 def main():
+    with open('C:\\Users\\BaoQiang\\Desktop\\nature.txt', 'r', encoding='utf-8') as f, \
+            open('C:\\Users\\BaoQiang\\Desktop\\2.txt', 'w', encoding='utf-8') as fw:
+        for idx,line in enumerate(f,1):
+            if idx % 5 == 3:
+                res = line.strip()[1:].strip()
+
+            if idx % 5 == 0:
+                res2 = line.strip()[:-1]
+
+                fw.write('{}: {}\n'.format(res,res2))
+
+def main8():
+    with open('C:\\Users\\BaoQiang\\Desktop\\contact_list.json','r',encoding='utf-8') as f,\
+    open('C:\\Users\\BaoQiang\\Desktop\\2.txt','w',encoding='utf-8') as fw:
+        for line in f:
+            json_data = json.loads(line.strip())
+            for item in json_data:
+                if not 'RemarkName' in item:
+                    continue
+
+                for i in item['RemarkName'][1:]:
+                    fw.write('{}\n'.format(i))
+
+def main7():
     time.sleep(random.uniform(0.4, 1.2))
 
 

@@ -173,19 +173,19 @@ class WxApi:
                                                                              'group': group}
 
         if self.DEBUG:
-            with open(os.path.join(self.temp_pwd, 'contact_list.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'contact_list.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.contact_list,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'special_list.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'special_list.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.special_list,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'group_list.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'group_list.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.group_list,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'public_list.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'public_list.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.public_list,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'member_list.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'member_list.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.member_list,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'group_members.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'group_members.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.group_members,ensure_ascii=False))
-            with open(os.path.join(self.temp_pwd, 'account_info.json'), 'w') as f:
+            with open(os.path.join(self.temp_pwd, 'account_info.json'), 'w',encoding='utf-8') as f:
                 f.write(json.dumps(self.account_info,ensure_ascii=False))
         return True
 
